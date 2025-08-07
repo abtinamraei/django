@@ -6,7 +6,7 @@ SECRET_KEY = 'django-insecure-&q$)udwj%cb9dhl@q1@yh!%c*1p4d!qr^koizu4ac3sy(be+(x
 
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ['django-rz65.onrender.com', 'localhost', '127.0.0.1']
 
 # ✅ نصب اپلیکیشن‌ها
 INSTALLED_APPS = [
