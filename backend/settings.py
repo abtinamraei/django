@@ -72,15 +72,15 @@ TIME_ZONE = 'UTC'
 USE_I18N = True
 USE_TZ = True
 
-# مهم: /static/ را با اسلش اول بگذارید
+# مهم: /static/ به جای static/ باشد
 STATIC_URL = '/static/'
 
-# اضافه کردن STATIC_ROOT برای تولید استاتیک‌ها در محیط production
+# اضافه کردن این خط برای محیط production (Render و غیره)
 STATIC_ROOT = BASE_DIR / 'staticfiles'
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-# خط AUTH_USER_MODEL حذف شد
+# خط AUTH_USER_MODEL حذف شده
 
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
