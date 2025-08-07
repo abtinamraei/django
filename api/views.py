@@ -1,21 +1,12 @@
-from rest_framework import generics, permissions
+from rest_framework import generics
 from .models import Product
-from .serializers import ProductSerializer, RegisterSerializer
-from django.contrib.auth import get_user_model
+from .serializers import ProductSerializer
 
-User = get_user_model()
-
-class RegisterView(generics.CreateAPIView):
-    queryset = User.objects.all()
-    serializer_class = RegisterSerializer
-    permission_classes = [permissions.AllowAny]
-
-class ProductCreateView(generics.CreateAPIView):
-    queryset = Product.objects.all()
+class ProductListByCategory(generics.ListAPIView):
     serializer_class = ProductSerializer
-    permission_classes = [permissions.IsAuthenticated]
 
-class ProductListView(generics.ListAPIView):
-    queryset = Product.objects.all()
-    serializer_class = ProductSerializer
-    permission_classes = [permissions.AllowAny]
+    def get_queryset(self):
+        category_name = self.request.query_params.get('category')
+        if category_name:
+            return Product.objects.filter(category__name__iexact=category_name)
+        return Product.objects.all()

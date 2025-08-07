@@ -8,7 +8,6 @@ DEBUG = True
 
 ALLOWED_HOSTS = ['django-rz65.onrender.com', 'localhost', '127.0.0.1']
 
-# ✅ نصب اپلیکیشن‌ها
 INSTALLED_APPS = [
     'django.contrib.admin',
     'django.contrib.auth',
@@ -17,16 +16,14 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
 
-    # افزوده‌شده:
     'rest_framework',
     'rest_framework_simplejwt',
     'corsheaders',
     'api',
 ]
 
-# ✅ middleware (cors باید اول باشه)
 MIDDLEWARE = [
-    'corsheaders.middleware.CorsMiddleware',  # اضافه شده
+    'corsheaders.middleware.CorsMiddleware',
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
@@ -56,7 +53,6 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'backend.wsgi.application'
 
-# ✅ پایگاه داده پیش‌فرض SQLite
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.sqlite3',
@@ -64,44 +60,35 @@ DATABASES = {
     }
 }
 
-# رمز عبور
 AUTH_PASSWORD_VALIDATORS = [
-    {
-        'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator',
-    },
-    {
-        'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator',
-    },
-    {
-        'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator',
-    },
-    {
-        'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator',
-    },
+    {'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator'},
+    {'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator'},
+    {'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator'},
+    {'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator'},
 ]
 
-# تنظیمات بین‌المللی
 LANGUAGE_CODE = 'en-us'
 TIME_ZONE = 'UTC'
 USE_I18N = True
 USE_TZ = True
 
-# فایل‌های استاتیک
-STATIC_URL = 'static/'
+# مهم: /static/ را با اسلش اول بگذارید
+STATIC_URL = '/static/'
+
+# اضافه کردن STATIC_ROOT برای تولید استاتیک‌ها در محیط production
+STATIC_ROOT = BASE_DIR / 'staticfiles'
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-# ✅ تعریف مدل کاربر سفارشی
-AUTH_USER_MODEL = 'api.User'
+# خط AUTH_USER_MODEL حذف شد
 
-# ✅ تنظیمات Django REST Framework
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
         'rest_framework_simplejwt.authentication.JWTAuthentication',
     ),
 }
 
-# ✅ تنظیمات CORS برای اتصال به Next.js
 CORS_ALLOWED_ORIGINS = [
-    "http://localhost:3000","https://abtin12345678.vercel.app/"  # آدرس فرانت‌اند
+    "http://localhost:3000",
+    "https://froshgahposhak.vercel.app"
 ]

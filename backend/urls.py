@@ -1,12 +1,7 @@
-from django.http import HttpResponse
-from django.urls import path, include
 from django.contrib import admin
-
-def home(request):
-    return HttpResponse("Welcome to the backend API!")
+from django.urls import path, include
 
 urlpatterns = [
-    path('', home),  # مسیر صفحه اصلی
     path('admin/', admin.site.urls),
-    path('api/', include('api.urls')),
+    path('api/', include('api.urls')),  # همه api ها زیر /api/
 ]
