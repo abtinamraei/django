@@ -103,5 +103,5 @@ REST_FRAMEWORK = {
 
 # ✅ تنظیمات CORS برای اتصال به Next.js
 CORS_ALLOWED_ORIGINS = [
-    "http://localhost:3000",  # آدرس فرانت‌اند
+    "http://localhost:3000","https://abtin12345678.vercel.app/"  # آدرس فرانت‌اند
 ]
