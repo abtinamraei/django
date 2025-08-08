@@ -1,6 +1,6 @@
 from rest_framework import generics
-from .models import Product
-from .serializers import ProductSerializer
+from .models import Product, Category
+from .serializers import ProductSerializer, CategorySerializer
 
 class ProductListByCategory(generics.ListAPIView):
     serializer_class = ProductSerializer
@@ -10,3 +10,7 @@ class ProductListByCategory(generics.ListAPIView):
         if category_name:
             return Product.objects.filter(category__name__iexact=category_name)
         return Product.objects.all()
+
+class CategoryList(generics.ListAPIView):
+    queryset = Category.objects.all()
+    serializer_class = CategorySerializer
