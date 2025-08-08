@@ -7,8 +7,16 @@ class CategorySerializer(serializers.ModelSerializer):
         fields = ['id', 'name', 'emoji', 'description']
 
 class ProductSerializer(serializers.ModelSerializer):
-    category = CategorySerializer(read_only=True)  # برای نمایش کامل دسته بندی
+    # برای نمایش کامل دسته‌بندی
+    category = CategorySerializer(read_only=True)
+
+    # برای نوشتن (ارسال) دسته‌بندی با شناسه آن
+    category_id = serializers.PrimaryKeyRelatedField(
+        queryset=Category.objects.all(),
+        source='category',
+        write_only=True
+    )
 
     class Meta:
         model = Product
-        fields = ['id', 'name', 'category', 'price', 'emoji', 'description']
+        fields = ['id', 'name', 'category', 'category_id', 'price', 'emoji', 'description']
