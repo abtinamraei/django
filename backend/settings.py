@@ -6,7 +6,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY', 'django-insecure-&q$)udwj%cb9dhl@q1@yh!%c*1p4d!qr^koizu4ac3sy(be+(x')
 
-DEBUG = os.environ.get('DJANGO_DEBUG', 'false') == 'false'
+DEBUG = os.environ.get('DJANGO_DEBUG', 'False') == 'true'
 
 ALLOWED_HOSTS = [
     'django-rz65.onrender.com',
