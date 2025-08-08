@@ -6,7 +6,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY', 'django-insecure-&q$)udwj%cb9dhl@q1@yh!%c*1p4d!qr^koizu4ac3sy(be+(x')
 
-DEBUG = os.environ.get('DJANGO_DEBUG', 'True') == 'True'
+DEBUG = os.environ.get('DJANGO_DEBUG', 'false') == 'false'
 
 ALLOWED_HOSTS = [
     'django-rz65.onrender.com',
@@ -111,6 +111,7 @@ SIMPLE_JWT = {
 # -------------------- CORS --------------------
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:3000",
+    "http://192.168.1.7:3000",
     "https://froshgahposhak.vercel.app",
 ]
 CORS_ALLOW_CREDENTIALS = True  # برای ارسال کوکی/توکن با درخواست‌ها
