@@ -1,16 +1,12 @@
 from pathlib import Path
-import os
 from datetime import timedelta
-import dj_database_url  # یادت باشه نصبش کنی: pip install dj-database-url
+import dj_database_url
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-SECRET_KEY = os.environ.get(
-    'DJANGO_SECRET_KEY',
-    'django-insecure-&q$)udwj%cb9dhl@q1@yh!%c*1p4d!qr^koizu4ac3sy(be+(x'
-)
+SECRET_KEY = 'django-insecure-&q$)udwj%cb9dhl@q1@yh!%c*1p4d!qr^koizu4ac3sy(be+(x'
 
-DEBUG = os.environ.get('DJANGO_DEBUG', 'False').lower() == 'true'
+DEBUG = False  # چون سرور است بهتر False باشه
 
 ALLOWED_HOSTS = [
     'django-rz65.onrender.com',
@@ -65,10 +61,9 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'backend.wsgi.application'
 
-# این قسمت مهم اتصال دیتابیس با DATABASE_URL هست
 DATABASES = {
     'default': dj_database_url.parse(
-        os.environ.get('DATABASE_URL'),
+        'postgresql://postgres:RXOdvMVXxLLrRaDSomDukNSZaXjeuaAC@postgres.railway.internal:5432/railway',
         conn_max_age=600,
         ssl_require=True
     )
@@ -88,9 +83,7 @@ USE_TZ = True
 
 STATIC_URL = '/static/'
 STATIC_ROOT = BASE_DIR / 'staticfiles'
-STATICFILES_DIRS = [
-    BASE_DIR / "static",
-]
+STATICFILES_DIRS = [BASE_DIR / "static"]
 STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
 MEDIA_URL = '/media/'
