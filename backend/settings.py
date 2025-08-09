@@ -8,7 +8,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # =======================
 SECRET_KEY = 'یک_کلید_امنیتی_قوی_و_تصادفی'
 DEBUG = True
-ALLOWED_HOSTS = ['*']
+ALLOWED_HOSTS = ['*']  # برای تولید بهتر دامنه‌ها را دقیق مشخص کن
 
 # =======================
 # اپلیکیشن‌های نصب شده
@@ -21,7 +21,7 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
 
-    # اضافه کردن اپ خودتون
+    'corsheaders',  # حتما نصب باشه: pip install django-cors-headers
     'api',
 ]
 
@@ -31,12 +31,12 @@ INSTALLED_APPS = [
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
+    'corsheaders.middleware.CorsMiddleware',  # حتما قبل از CommonMiddleware
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
-        'corsheaders.middleware.CorsMiddleware',
 ]
 
 # =======================
@@ -82,7 +82,6 @@ DATABASES = {
     }
 }
 
-
 # =======================
 # Password validation
 # =======================
@@ -114,3 +113,8 @@ MEDIA_ROOT = BASE_DIR / 'media'
 # کلید پیش‌فرض
 # =======================
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+# =======================
+# تنظیمات CORS (برای دسترسی فرانت به بک‌اند)
+# =======================
+CORS_ALLOW_ALL_ORIGINS = True  # فقط برای تست؛ در تولید محدودش کن
