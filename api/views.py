@@ -3,11 +3,7 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from django.contrib.auth.models import User
 from .models import Category, Product
-from .serializers import (
-    CategorySerializer,
-    ProductSerializer,
-    RegisterSerializer,
-)
+from .serializers import CategorySerializer, ProductSerializer, RegisterSerializer
 from rest_framework_simplejwt.views import TokenObtainPairView
 
 # لیست دسته‌بندی‌ها
@@ -16,14 +12,16 @@ class CategoryListView(generics.ListAPIView):
     serializer_class = CategorySerializer
     permission_classes = [permissions.AllowAny]
 
-# لیست محصولات بر اساس دسته‌بندی
+# لیست محصولات بر اساس نام دسته‌بندی از کوئری پارامتر ?category=...
 class ProductListByCategory(generics.ListAPIView):
     serializer_class = ProductSerializer
     permission_classes = [permissions.AllowAny]
 
     def get_queryset(self):
-        category_id = self.kwargs.get('category_id')
-        return Product.objects.filter(category_id=category_id)
+        category_name = self.request.query_params.get('category')
+        if category_name:
+            return Product.objects.filter(category__name=category_name)
+        return Product.objects.all()
 
 # ثبت نام
 class RegisterView(generics.CreateAPIView):
