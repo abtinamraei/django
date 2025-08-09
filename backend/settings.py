@@ -1,11 +1,18 @@
 from pathlib import Path
 
+# مسیر پایه پروژه
 BASE_DIR = Path(__file__).resolve().parent.parent
 
+# =======================
+# تنظیمات اصلی
+# =======================
 SECRET_KEY = 'یک_کلید_امنیتی_قوی_و_تصادفی'
 DEBUG = True
 ALLOWED_HOSTS = ['*']
 
+# =======================
+# اپلیکیشن‌های نصب شده
+# =======================
 INSTALLED_APPS = [
     'django.contrib.admin',
     'django.contrib.auth',
@@ -13,8 +20,14 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+
+    # اضافه کردن اپ خودتون
+    'api',
 ]
 
+# =======================
+# Middleware ها
+# =======================
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
@@ -25,8 +38,14 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
 
+# =======================
+# روت urls.py
+# =======================
 ROOT_URLCONF = 'backend.urls'
 
+# =======================
+# Template Settings
+# =======================
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
@@ -43,6 +62,9 @@ TEMPLATES = [
     },
 ]
 
+# =======================
+# WSGI Application
+# =======================
 WSGI_APPLICATION = 'backend.wsgi.application'
 
 # =======================
@@ -59,6 +81,9 @@ DATABASES = {
     }
 }
 
+# =======================
+# Password validation
+# =======================
 AUTH_PASSWORD_VALIDATORS = [
     {'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator'},
     {'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator'},
@@ -66,15 +91,24 @@ AUTH_PASSWORD_VALIDATORS = [
     {'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator'},
 ]
 
+# =======================
+# تنظیمات زبان و منطقه زمانی
+# =======================
 LANGUAGE_CODE = 'en-us'
 TIME_ZONE = 'Asia/Tehran'
 USE_I18N = True
 USE_TZ = True
 
+# =======================
+# Static files
+# =======================
 STATIC_URL = '/static/'
 STATIC_ROOT = BASE_DIR / 'staticfiles'
 
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
 
+# =======================
+# کلید پیش‌فرض
+# =======================
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
