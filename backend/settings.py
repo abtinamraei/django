@@ -76,10 +76,11 @@ DATABASES = {
         'NAME': 'froshgahaaw_db',
         'USER': 'postgres',
         'PASSWORD': 'mF2SUpL!paap8PMq4eDd',
-        'HOST': 'froshgah-act-service',
-        'PORT': '5432',
+        'HOST': 'remote-fanhab.runflare.com',
+        'PORT': '31217',
     }
 }
+
 
 # =======================
 # Password validation
