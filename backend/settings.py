@@ -4,15 +4,18 @@ from datetime import timedelta
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY', 'django-insecure-&q$)udwj%cb9dhl@q1@yh!%c*1p4d!qr^koizu4ac3sy(be+(x')
+SECRET_KEY = os.environ.get(
+    'DJANGO_SECRET_KEY',
+    'django-insecure-&q$)udwj%cb9dhl@q1@yh!%c*1p4d!qr^koizu4ac3sy(be+(x'
+)
 
-# حتماً این خط به این شکل باشه تا درست تشخیص بده
+# حالت DEBUG بر اساس متغیر محیطی
 DEBUG = os.environ.get('DJANGO_DEBUG', 'False').lower() == 'true'
 
 ALLOWED_HOSTS = [
     'django-rz65.onrender.com',
     'localhost',
-    '127.0.0.1'
+    '127.0.0.1',
 ]
 
 # -------------------- INSTALLED APPS --------------------
@@ -35,7 +38,7 @@ INSTALLED_APPS = [
 MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware',  # باید بالا باشه
     'django.middleware.security.SecurityMiddleware',
-    'whitenoise.middleware.WhiteNoiseMiddleware',  # اضافه شده برای استاتیک
+    'whitenoise.middleware.WhiteNoiseMiddleware',  # برای استاتیک
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -68,11 +71,11 @@ WSGI_APPLICATION = 'backend.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.mysql',
-        'NAME': 'froshgah',           # نام دیتابیس خودت
-        'USER': 'abtin',          # یوزر MySQL
-        'PASSWORD': 'abtin1234',   # پسورد یوزر
-        'HOST': 'localhost',
-        'PORT': '3306',
+        'NAME': os.environ.get('MYSQL_DB_NAME', 'sql12794344'),
+        'USER': os.environ.get('MYSQL_USER', 'sql12794344'),
+        'PASSWORD': os.environ.get('MYSQL_PASSWORD', 'GVKqV7bZIQ'),
+        'HOST': os.environ.get('MYSQL_HOST', 'sql12.freesqldatabase.com'),
+        'PORT': os.environ.get('MYSQL_PORT', '3306'),
         'OPTIONS': {
             'init_command': "SET sql_mode='STRICT_TRANS_TABLES'",
             'charset': 'utf8mb4',
@@ -99,7 +102,6 @@ STATIC_ROOT = BASE_DIR / 'staticfiles'
 STATICFILES_DIRS = [
     BASE_DIR / "static",
 ]
-
 STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
 # -------------------- MEDIA FILES --------------------
@@ -126,9 +128,6 @@ CORS_ALLOWED_ORIGINS = [
     "http://192.168.1.7:3000",
     "https://froshgahposhak.vercel.app",
 ]
-CORS_ALLOW_CREDENTIALS = True  # برای ارسال کوکی/توکن با درخواست‌ها
-
-# حالت اضطراری برای همه دامنه‌ها:
-# CORS_ALLOW_ALL_ORIGINS = True
+CORS_ALLOW_CREDENTIALS = True
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
