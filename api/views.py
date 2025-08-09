@@ -1,35 +1,36 @@
 from rest_framework import generics, permissions
-from django.contrib.auth.models import User
-from rest_framework_simplejwt.views import TokenObtainPairView
 from rest_framework.views import APIView
 from rest_framework.response import Response
-from rest_framework.serializers import ModelSerializer, CharField
+from django.contrib.auth.models import User
+from .models import Category, Product
+from .serializers import (
+    CategorySerializer,
+    ProductSerializer,
+    RegisterSerializer,
+)
+from rest_framework_simplejwt.views import TokenObtainPairView
 
-# Serializer برای ثبت‌نام کاربر جدید
-class RegisterSerializer(ModelSerializer):
-    password = CharField(write_only=True, min_length=6)
+# لیست دسته‌بندی‌ها
+class CategoryListView(generics.ListAPIView):
+    queryset = Category.objects.all()
+    serializer_class = CategorySerializer
+    permission_classes = [permissions.AllowAny]
 
-    class Meta:
-        model = User
-        fields = ['username', 'password', 'email', 'first_name', 'last_name']
+# لیست محصولات بر اساس دسته‌بندی
+class ProductListByCategory(generics.ListAPIView):
+    serializer_class = ProductSerializer
+    permission_classes = [permissions.AllowAny]
 
-    def create(self, validated_data):
-        # ایجاد کاربر با پسورد هش شده
-        user = User.objects.create_user(
-            username=validated_data['username'],
-            password=validated_data['password'],
-            email=validated_data.get('email', ''),
-            first_name=validated_data.get('first_name', ''),
-            last_name=validated_data.get('last_name', ''),
-        )
-        return user
+    def get_queryset(self):
+        category_id = self.kwargs.get('category_id')
+        return Product.objects.filter(category_id=category_id)
 
-# ویو ثبت‌نام (register)
+# ثبت نام
 class RegisterView(generics.CreateAPIView):
     serializer_class = RegisterSerializer
-    permission_classes = [permissions.AllowAny]  # اجازه دسترسی برای همه
+    permission_classes = [permissions.AllowAny]
 
-# ویو برای دریافت پروفایل کاربر (نیازمند توکن معتبر)
+# دریافت پروفایل کاربر
 class UserProfileView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
