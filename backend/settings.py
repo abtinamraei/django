@@ -6,14 +6,16 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY', 'django-insecure-&q$)udwj%cb9dhl@q1@yh!%c*1p4d!qr^koizu4ac3sy(be+(x')
 
+# حتماً این خط به این شکل باشه تا درست تشخیص بده
 DEBUG = os.environ.get('DJANGO_DEBUG', 'False').lower() == 'true'
 
 ALLOWED_HOSTS = [
     'django-rz65.onrender.com',
     'localhost',
-    '127.0.0.1',
+    '127.0.0.1'
 ]
 
+# -------------------- INSTALLED APPS --------------------
 INSTALLED_APPS = [
     'django.contrib.admin',
     'django.contrib.auth',
@@ -26,13 +28,14 @@ INSTALLED_APPS = [
     'rest_framework_simplejwt',
     'corsheaders',
 
-    'api',
+    'api',  # اپ اصلی
 ]
 
+# -------------------- MIDDLEWARE --------------------
 MIDDLEWARE = [
-    'corsheaders.middleware.CorsMiddleware',
+    'corsheaders.middleware.CorsMiddleware',  # باید بالا باشه
     'django.middleware.security.SecurityMiddleware',
-    'whitenoise.middleware.WhiteNoiseMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',  # اضافه شده برای استاتیک
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -61,18 +64,23 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'backend.wsgi.application'
 
-# دیتابیس PostgreSQL
+# -------------------- DATABASE --------------------
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME': os.environ.get('POSTGRES_DB', 'your_db_name'),
-        'USER': os.environ.get('POSTGRES_USER', 'your_db_user'),
-        'PASSWORD': os.environ.get('POSTGRES_PASSWORD', 'your_db_password'),
-        'HOST': os.environ.get('POSTGRES_HOST', 'localhost'),
-        'PORT': os.environ.get('POSTGRES_PORT', '5432'),
+        'ENGINE': 'django.db.backends.mysql',
+        'NAME': 'froshgah',           # نام دیتابیس خودت
+        'USER': 'abtin',          # یوزر MySQL
+        'PASSWORD': 'abtin1234',   # پسورد یوزر
+        'HOST': 'localhost',
+        'PORT': '3306',
+        'OPTIONS': {
+            'init_command': "SET sql_mode='STRICT_TRANS_TABLES'",
+            'charset': 'utf8mb4',
+        },
     }
 }
 
+# -------------------- PASSWORD VALIDATORS --------------------
 AUTH_PASSWORD_VALIDATORS = [
     {'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator'},
     {'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator'},
@@ -81,10 +89,11 @@ AUTH_PASSWORD_VALIDATORS = [
 ]
 
 LANGUAGE_CODE = 'en-us'
-TIME_ZONE = 'Asia/Tehran'
+TIME_ZONE = 'UTC'
 USE_I18N = True
 USE_TZ = True
 
+# -------------------- STATIC FILES --------------------
 STATIC_URL = '/static/'
 STATIC_ROOT = BASE_DIR / 'staticfiles'
 STATICFILES_DIRS = [
@@ -93,29 +102,33 @@ STATICFILES_DIRS = [
 
 STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
+# -------------------- MEDIA FILES --------------------
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
 
+# -------------------- REST FRAMEWORK --------------------
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
         'rest_framework_simplejwt.authentication.JWTAuthentication',
     ),
 }
 
+# -------------------- JWT SETTINGS --------------------
 SIMPLE_JWT = {
     'ACCESS_TOKEN_LIFETIME': timedelta(minutes=60),
     'REFRESH_TOKEN_LIFETIME': timedelta(days=1),
     'AUTH_HEADER_TYPES': ('Bearer',),
 }
 
-if DEBUG:
-    CORS_ALLOW_ALL_ORIGINS = True
-else:
-    CORS_ALLOWED_ORIGINS = [
-        "http://localhost:3000",
-        "http://192.168.1.7:3000",
-        "https://froshgahposhak.vercel.app",
-    ]
-CORS_ALLOW_CREDENTIALS = True
+# -------------------- CORS --------------------
+CORS_ALLOWED_ORIGINS = [
+    "http://localhost:3000",
+    "http://192.168.1.7:3000",
+    "https://froshgahposhak.vercel.app",
+]
+CORS_ALLOW_CREDENTIALS = True  # برای ارسال کوکی/توکن با درخواست‌ها
+
+# حالت اضطراری برای همه دامنه‌ها:
+# CORS_ALLOW_ALL_ORIGINS = True
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
