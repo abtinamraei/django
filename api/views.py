@@ -2,6 +2,7 @@ from rest_framework import generics, permissions
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from django.contrib.auth.models import User
+from django.db.models import Q
 from .models import Category, Product
 from .serializers import CategorySerializer, ProductSerializer, RegisterSerializer
 from rest_framework_simplejwt.views import TokenObtainPairView
@@ -12,16 +13,26 @@ class CategoryListView(generics.ListAPIView):
     serializer_class = CategorySerializer
     permission_classes = [permissions.AllowAny]
 
-# لیست محصولات بر اساس نام دسته‌بندی از کوئری پارامتر ?category=...
+# لیست محصولات بر اساس نام دسته‌بندی و جستجو با پارامترهای کوئری ?category=...&search=...
 class ProductListByCategory(generics.ListAPIView):
     serializer_class = ProductSerializer
     permission_classes = [permissions.AllowAny]
 
     def get_queryset(self):
         category_name = self.request.query_params.get('category')
-        if category_name:
-            return Product.objects.filter(category__name=category_name)
-        return Product.objects.all()
+        search_term = self.request.query_params.get('search')
+
+        queryset = Product.objects.all()
+
+        if category_name and category_name.lower() != 'all':
+            queryset = queryset.filter(category__name=category_name)
+
+        if search_term:
+            queryset = queryset.filter(
+                Q(name__icontains=search_term) | Q(description__icontains=search_term)
+            )
+
+        return queryset
 
 # ثبت نام
 class RegisterView(generics.CreateAPIView):
