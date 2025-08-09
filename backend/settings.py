@@ -1,20 +1,18 @@
-from pathlib import Path
-from datetime import timedelta
-import dj_database_url
+# settings.py
 
-BASE_DIR = Path(__file__).resolve().parent.parent
+import os
 
-SECRET_KEY = 'django-insecure-&q$)udwj%cb9dhl@q1@yh!%c*1p4d!qr^koizu4ac3sy(be+(x'
+# SECURITY WARNING: keep the secret key used in production secret!
+SECRET_KEY = 'your-secret-key-here'
 
-DEBUG = False  # چون سرور است بهتر False باشه
+# SECURITY WARNING: don't run with debug turned on in production!
+DEBUG = True  # برای تولید باید False شود
 
-ALLOWED_HOSTS = [
-    'django-rz65.onrender.com',
-    'localhost',
-    '127.0.0.1',
-]
+ALLOWED_HOSTS = ['*']  # بهتره دامنه یا آی‌پی سرورت رو اینجا بزنی
 
+# Application definition
 INSTALLED_APPS = [
+    # اپ‌های پیش‌فرض جنگو
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -22,17 +20,11 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
 
-    'rest_framework',
-    'rest_framework_simplejwt',
-    'corsheaders',
-
-    'api',
+    # اپ‌های خودت
 ]
 
 MIDDLEWARE = [
-    'corsheaders.middleware.CorsMiddleware',
     'django.middleware.security.SecurityMiddleware',
-    'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -46,7 +38,7 @@ ROOT_URLCONF = 'backend.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [],
+        'DIRS': [os.path.join(BASE_DIR := os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), 'templates'],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -61,51 +53,63 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'backend.wsgi.application'
 
+
+# تنظیمات دیتابیس MySQL روی InfinityFree
 DATABASES = {
-    'default': dj_database_url.parse(
-        'postgresql://postgres:RXOdvMVXxLLrRaDSomDukNSZaXjeuaAC@postgres.railway.internal:5432/railway',
-        conn_max_age=600,
-        ssl_require=True
-    )
+    'default': {
+        'ENGINE': 'django.db.backends.mysql',
+        'NAME': 'if0_39669148_froshgah',  # نام دیتابیس
+        'USER': 'if0_39669148',            # یوزرنیم دیتابیس
+        'PASSWORD': 'rwhGqygmSi',          # پسورد دیتابیس
+        'HOST': 'sql111.infinityfree.com', # هاست دیتابیس
+        'PORT': '3306',                    # پورت دیتابیس
+        'OPTIONS': {
+            'init_command': "SET sql_mode='STRICT_TRANS_TABLES'",
+            'charset': 'utf8mb4',
+        },
+    }
 }
 
+
+# Password validation
 AUTH_PASSWORD_VALIDATORS = [
-    {'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator'},
-    {'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator'},
-    {'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator'},
-    {'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator'},
+    {
+        'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator',
+    },
+    {
+        'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator',
+    },
+    {
+        'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator',
+    },
+    {
+        'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator',
+    },
 ]
 
+
+# بین‌المللی‌سازی
 LANGUAGE_CODE = 'en-us'
+
 TIME_ZONE = 'UTC'
+
 USE_I18N = True
+
 USE_TZ = True
 
+
+# مسیر فایل‌های استاتیک
 STATIC_URL = '/static/'
-STATIC_ROOT = BASE_DIR / 'staticfiles'
-STATICFILES_DIRS = [BASE_DIR / "static"]
-STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
+STATICFILES_DIRS = [os.path.join(BASE_DIR, 'static')]
+
+STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
+
+# رسانه (مدیا)
 MEDIA_URL = '/media/'
-MEDIA_ROOT = BASE_DIR / 'media'
 
-REST_FRAMEWORK = {
-    'DEFAULT_AUTHENTICATION_CLASSES': (
-        'rest_framework_simplejwt.authentication.JWTAuthentication',
-    ),
-}
+MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
-SIMPLE_JWT = {
-    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=60),
-    'REFRESH_TOKEN_LIFETIME': timedelta(days=1),
-    'AUTH_HEADER_TYPES': ('Bearer',),
-}
 
-CORS_ALLOWED_ORIGINS = [
-    "http://localhost:3000",
-    "http://192.168.1.7:3000",
-    "https://froshgahposhak.vercel.app",
-]
-CORS_ALLOW_CREDENTIALS = True
-
+# پیش‌فرض ID فیلدها در مدل‌ها (از Django 3.2 به بعد)
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
