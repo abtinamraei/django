@@ -83,10 +83,8 @@ MEDIA_ROOT = BASE_DIR / 'media'
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-# اجازه دسترسی cors از همه منابع
 CORS_ALLOW_ALL_ORIGINS = True
 
-# تنظیمات REST Framework و JWT
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
         'rest_framework_simplejwt.authentication.JWTAuthentication',
@@ -102,11 +100,10 @@ SIMPLE_JWT = {
     'AUTH_HEADER_TYPES': ('Bearer',),
 }
 
-# تنظیمات ایمیل با Gmail و App Password
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 EMAIL_HOST = 'smtp.gmail.com'
 EMAIL_USE_TLS = True
 EMAIL_PORT = 587
-EMAIL_HOST_USER = 'abtin.amraei@gmail.com'          # ایمیل خودت را اینجا بگذار
-EMAIL_HOST_PASSWORD = 'nafx ukay gnhr nnpo'         # پسورد اپلیکیشن ساخته شده از گوگل اینجا بگذار
+EMAIL_HOST_USER = 'abtin.amraei@gmail.com'          # ایمیل خودت
+EMAIL_HOST_PASSWORD = 'پسورد_اپلیکیشن_گوگل_تو'    # پسورد اپلیکیشن جیمیل که ساختی
 DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
