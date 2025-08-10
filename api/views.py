@@ -1,19 +1,17 @@
 import random
 from django.core.mail import send_mail
-from rest_framework import generics, status
+from rest_framework import generics, status, permissions
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from django.contrib.auth.models import User
-from .models import EmailVerificationCode
+from django.db.models import Q
+from .models import EmailVerificationCode, Category, Product
 from .serializers import (
     EmailSerializer, VerifyEmailCodeSerializer, RegisterWithEmailSerializer,
     RegisterSerializer, CategorySerializer, ProductSerializer
 )
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
-from rest_framework import permissions
-from django.db.models import Q
 
-# ارسال کد تایید ایمیل
 class SendEmailVerificationCodeView(APIView):
     permission_classes = []
 
@@ -39,7 +37,6 @@ class SendEmailVerificationCodeView(APIView):
             return Response({'detail': 'کد تایید به ایمیل شما ارسال شد.'})
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-# بررسی کد تایید ایمیل
 class VerifyEmailCodeView(APIView):
     permission_classes = []
 
@@ -64,12 +61,13 @@ class VerifyEmailCodeView(APIView):
 
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-# ثبت نام با ایمیل و کد تایید
 class RegisterWithEmailView(generics.CreateAPIView):
     serializer_class = RegisterWithEmailSerializer
     permission_classes = []
 
-# بقیه ویوهای شما (مثلاً دسته‌بندی‌ها و محصولات)
+class RegisterView(generics.CreateAPIView):
+    serializer_class = RegisterSerializer
+    permission_classes = []
 
 class CategoryListView(generics.ListAPIView):
     queryset = Category.objects.all()
@@ -96,4 +94,33 @@ class ProductListByCategory(generics.ListAPIView):
 
         return queryset
 
-# پروفایل و تغییر رمز هم مثل قبلی خودت
+class UserProfileView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        user = request.user
+        return Response({
+            'username': user.username,
+            'email': user.email,
+            'first_name': user.first_name,
+            'last_name': user.last_name,
+        })
+
+class ChangePasswordView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request):
+        user = request.user
+        old_password = request.data.get('old_password')
+        new_password = request.data.get('new_password')
+
+        if not old_password or not new_password:
+            return Response({'detail': 'هر دو فیلد old_password و new_password الزامی هستند.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        if not user.check_password(old_password):
+            return Response({'detail': 'رمز عبور فعلی اشتباه است.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        user.set_password(new_password)
+        user.save()
+
+        return Response({'detail': 'رمز عبور با موفقیت تغییر یافت.'}, status=status.HTTP_200_OK)

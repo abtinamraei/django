@@ -36,8 +36,6 @@ class ProductSerializer(serializers.ModelSerializer):
         model = Product
         fields = ['id', 'name', 'category', 'category_id', 'price', 'emoji', 'description']
 
-# سریالایزرهای تایید ایمیل و ثبت‌نام با ایمیل و کد:
-
 class EmailSerializer(serializers.Serializer):
     email = serializers.EmailField()
 
