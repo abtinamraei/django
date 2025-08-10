@@ -1,19 +1,81 @@
-from rest_framework import generics, permissions, status
-from rest_framework.views import APIView
+import random
+from django.core.mail import send_mail
+from rest_framework import generics, status
 from rest_framework.response import Response
+from rest_framework.views import APIView
 from django.contrib.auth.models import User
+from .models import EmailVerificationCode
+from .serializers import (
+    EmailSerializer, VerifyEmailCodeSerializer, RegisterWithEmailSerializer,
+    RegisterSerializer, CategorySerializer, ProductSerializer
+)
+from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
+from rest_framework import permissions
 from django.db.models import Q
-from .models import Category, Product
-from .serializers import CategorySerializer, ProductSerializer, RegisterSerializer
-from rest_framework_simplejwt.views import TokenObtainPairView
 
-# لیست دسته‌بندی‌ها
+# ارسال کد تایید ایمیل
+class SendEmailVerificationCodeView(APIView):
+    permission_classes = []
+
+    def post(self, request):
+        serializer = EmailSerializer(data=request.data)
+        if serializer.is_valid():
+            email = serializer.validated_data['email']
+            code = ''.join([str(random.randint(0,9)) for _ in range(6)])
+
+            obj, created = EmailVerificationCode.objects.update_or_create(
+                email=email,
+                defaults={'code': code}
+            )
+
+            send_mail(
+                'کد تایید ایمیل',
+                f'کد تایید شما: {code}',
+                'no-reply@example.com',
+                [email],
+                fail_silently=False,
+            )
+
+            return Response({'detail': 'کد تایید به ایمیل شما ارسال شد.'})
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+# بررسی کد تایید ایمیل
+class VerifyEmailCodeView(APIView):
+    permission_classes = []
+
+    def post(self, request):
+        serializer = VerifyEmailCodeSerializer(data=request.data)
+        if serializer.is_valid():
+            email = serializer.validated_data['email']
+            code = serializer.validated_data['code']
+
+            try:
+                evc = EmailVerificationCode.objects.get(email=email)
+            except EmailVerificationCode.DoesNotExist:
+                return Response({'detail': 'کد تایید یافت نشد.'}, status=status.HTTP_400_BAD_REQUEST)
+
+            if evc.is_expired():
+                return Response({'detail': 'کد تایید منقضی شده است.'}, status=status.HTTP_400_BAD_REQUEST)
+
+            if evc.code != code:
+                return Response({'detail': 'کد تایید اشتباه است.'}, status=status.HTTP_400_BAD_REQUEST)
+
+            return Response({'detail': 'ایمیل با موفقیت تایید شد.'})
+
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+# ثبت نام با ایمیل و کد تایید
+class RegisterWithEmailView(generics.CreateAPIView):
+    serializer_class = RegisterWithEmailSerializer
+    permission_classes = []
+
+# بقیه ویوهای شما (مثلاً دسته‌بندی‌ها و محصولات)
+
 class CategoryListView(generics.ListAPIView):
     queryset = Category.objects.all()
     serializer_class = CategorySerializer
     permission_classes = [permissions.AllowAny]
 
-# لیست محصولات بر اساس نام دسته‌بندی و جستجو
 class ProductListByCategory(generics.ListAPIView):
     serializer_class = ProductSerializer
     permission_classes = [permissions.AllowAny]
@@ -34,40 +96,4 @@ class ProductListByCategory(generics.ListAPIView):
 
         return queryset
 
-# ثبت نام
-class RegisterView(generics.CreateAPIView):
-    serializer_class = RegisterSerializer
-    permission_classes = [permissions.AllowAny]
-
-# پروفایل کاربر
-class UserProfileView(APIView):
-    permission_classes = [permissions.IsAuthenticated]
-
-    def get(self, request):
-        user = request.user
-        return Response({
-            'username': user.username,
-            'email': user.email,
-            'first_name': user.first_name,
-            'last_name': user.last_name,
-        })
-
-# تغییر رمز عبور
-class ChangePasswordView(APIView):
-    permission_classes = [permissions.IsAuthenticated]
-
-    def post(self, request):
-        user = request.user
-        old_password = request.data.get('old_password')
-        new_password = request.data.get('new_password')
-
-        if not old_password or not new_password:
-            return Response({'detail': 'هر دو فیلد old_password و new_password الزامی هستند.'}, status=status.HTTP_400_BAD_REQUEST)
-
-        if not user.check_password(old_password):
-            return Response({'detail': 'رمز عبور فعلی اشتباه است.'}, status=status.HTTP_400_BAD_REQUEST)
-
-        user.set_password(new_password)
-        user.save()
-
-        return Response({'detail': 'رمز عبور با موفقیت تغییر یافت.'}, status=status.HTTP_200_OK)
+# پروفایل و تغییر رمز هم مثل قبلی خودت

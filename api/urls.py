@@ -6,6 +6,9 @@ from .views import (
     RegisterView,
     UserProfileView,
     ChangePasswordView,
+    SendEmailVerificationCodeView,
+    VerifyEmailCodeView,
+    RegisterWithEmailView,
 )
 
 urlpatterns = [
@@ -15,6 +18,10 @@ urlpatterns = [
     path('auth/login/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
     path('auth/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
     path('auth/register/', RegisterView.as_view(), name='register'),
+
+    path('auth/send-verification-code/', SendEmailVerificationCodeView.as_view(), name='send-verification-code'),
+    path('auth/verify-email-code/', VerifyEmailCodeView.as_view(), name='verify-email-code'),
+    path('auth/register-with-email/', RegisterWithEmailView.as_view(), name='register-with-email'),
 
     path('auth/profile/', UserProfileView.as_view(), name='user-profile'),
     path('auth/change-password/', ChangePasswordView.as_view(), name='change-password'),
