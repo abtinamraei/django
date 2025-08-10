@@ -1,4 +1,5 @@
 from pathlib import Path
+from datetime import timedelta
 
 # مسیر پایه پروژه
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -8,7 +9,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # =======================
 SECRET_KEY = 'یک_کلید_امنیتی_قوی_و_تصادفی'
 DEBUG = True
-ALLOWED_HOSTS = ['*']  # برای تولید بهتر دامنه‌ها را دقیق مشخص کن
+ALLOWED_HOSTS = ['*']  # برای تولید بهتر دامنه‌ها را دقیق مشخص کنید
 
 # =======================
 # اپلیکیشن‌های نصب شده
@@ -21,7 +22,9 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
 
-    'corsheaders',  # حتما نصب باشه: pip install django-cors-headers
+    'corsheaders',  # حتما نصب شود: pip install django-cors-headers
+    'rest_framework',  # حتما نصب شود: pip install djangorestframework
+    'rest_framework_simplejwt',  # حتما نصب شود: pip install djangorestframework-simplejwt
     'api',
 ]
 
@@ -117,4 +120,22 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 # =======================
 # تنظیمات CORS (برای دسترسی فرانت به بک‌اند)
 # =======================
-CORS_ALLOW_ALL_ORIGINS = True  # فقط برای تست؛ در تولید محدودش کن
+CORS_ALLOW_ALL_ORIGINS = True  # فقط برای توسعه، در تولید محدود کنید
+
+# =======================
+# تنظیمات REST Framework و JWT
+# =======================
+REST_FRAMEWORK = {
+    'DEFAULT_AUTHENTICATION_CLASSES': (
+        'rest_framework_simplejwt.authentication.JWTAuthentication',
+    ),
+    'DEFAULT_PERMISSION_CLASSES': (
+        'rest_framework.permissions.IsAuthenticated',
+    ),
+}
+
+SIMPLE_JWT = {
+    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=60),
+    'REFRESH_TOKEN_LIFETIME': timedelta(days=1),
+    'AUTH_HEADER_TYPES': ('Bearer',),
+}
