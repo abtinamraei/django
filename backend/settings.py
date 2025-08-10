@@ -106,5 +106,5 @@ EMAIL_HOST = 'smtp.gmail.com'
 EMAIL_USE_TLS = True
 EMAIL_PORT = 587
 EMAIL_HOST_USER = 'abtin.amraei@gmail.com'
-EMAIL_HOST_PASSWORD = 'abtin1234'  # پسورد الکی فقط برای تست
+EMAIL_HOST_PASSWORD = 'nafx ukay gnhr nnpo'  # پسورد الکی فقط برای تست
 DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
