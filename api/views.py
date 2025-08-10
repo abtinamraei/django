@@ -1,10 +1,15 @@
 import random
 from django.core.mail import send_mail
+from django.conf import settings
+from django.views.decorators.csrf import csrf_exempt
+from django.utils.decorators import method_decorator
+
 from rest_framework import generics, status, permissions
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from django.contrib.auth.models import User
 from django.db.models import Q
+
 from .models import EmailVerificationCode, Category, Product
 from .serializers import (
     EmailSerializer, VerifyEmailCodeSerializer, RegisterWithEmailSerializer,
@@ -12,6 +17,8 @@ from .serializers import (
 )
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 
+
+@method_decorator(csrf_exempt, name='dispatch')
 class SendEmailVerificationCodeView(APIView):
     permission_classes = []
 
@@ -19,7 +26,7 @@ class SendEmailVerificationCodeView(APIView):
         serializer = EmailSerializer(data=request.data)
         if serializer.is_valid():
             email = serializer.validated_data['email']
-            code = ''.join([str(random.randint(0,9)) for _ in range(6)])
+            code = ''.join([str(random.randint(0, 9)) for _ in range(6)])
 
             obj, created = EmailVerificationCode.objects.update_or_create(
                 email=email,
@@ -29,7 +36,7 @@ class SendEmailVerificationCodeView(APIView):
             send_mail(
                 'کد تایید ایمیل',
                 f'کد تایید شما: {code}',
-                'no-reply@example.com',
+                settings.DEFAULT_FROM_EMAIL,
                 [email],
                 fail_silently=False,
             )
@@ -37,6 +44,8 @@ class SendEmailVerificationCodeView(APIView):
             return Response({'detail': 'کد تایید به ایمیل شما ارسال شد.'})
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
+
+@method_decorator(csrf_exempt, name='dispatch')
 class VerifyEmailCodeView(APIView):
     permission_classes = []
 
@@ -61,18 +70,24 @@ class VerifyEmailCodeView(APIView):
 
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
+
+@method_decorator(csrf_exempt, name='dispatch')
 class RegisterWithEmailView(generics.CreateAPIView):
     serializer_class = RegisterWithEmailSerializer
     permission_classes = []
 
+
+@method_decorator(csrf_exempt, name='dispatch')
 class RegisterView(generics.CreateAPIView):
     serializer_class = RegisterSerializer
     permission_classes = []
+
 
 class CategoryListView(generics.ListAPIView):
     queryset = Category.objects.all()
     serializer_class = CategorySerializer
     permission_classes = [permissions.AllowAny]
+
 
 class ProductListByCategory(generics.ListAPIView):
     serializer_class = ProductSerializer
@@ -94,6 +109,7 @@ class ProductListByCategory(generics.ListAPIView):
 
         return queryset
 
+
 class UserProfileView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
@@ -106,6 +122,8 @@ class UserProfileView(APIView):
             'last_name': user.last_name,
         })
 
+
+@method_decorator(csrf_exempt, name='dispatch')
 class ChangePasswordView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
