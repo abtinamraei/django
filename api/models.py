@@ -16,6 +16,7 @@ class Product(models.Model):
     price = models.DecimalField(max_digits=10, decimal_places=2)
     emoji = models.CharField(max_length=10)
     description = models.TextField(null=True, blank=True)
+    image = models.ImageField(upload_to='products/', null=True, blank=True)  # فیلد تصویر
 
     def __str__(self):
         return self.name
