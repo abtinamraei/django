@@ -23,6 +23,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',  # اضافه شده برای سرو فایل استاتیک
     'django.contrib.sessions.middleware.SessionMiddleware',
     'corsheaders.middleware.CorsMiddleware',  
     'django.middleware.common.CommonMiddleware',
@@ -75,9 +76,14 @@ TIME_ZONE = 'Asia/Tehran'
 USE_I18N = True
 USE_TZ = True
 
+# تنظیمات استاتیک
 STATIC_URL = '/static/'
 STATIC_ROOT = BASE_DIR / 'staticfiles'
 
+# استفاده از whitenoise برای بهینه‌سازی فایل‌های استاتیک
+STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
+
+# تنظیمات مدیا (تصاویر و فایل‌های آپلود شده)
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
 
@@ -105,5 +111,5 @@ EMAIL_HOST = 'smtp.gmail.com'
 EMAIL_USE_TLS = True
 EMAIL_PORT = 587
 EMAIL_HOST_USER = 'abtin.amraei@gmail.com'          # ایمیل خودت
-EMAIL_HOST_PASSWORD = 'pnjn mcbt tpps zlmc'    # پسورد اپلیکیشن جیمیل که ساختی
+EMAIL_HOST_PASSWORD = 'pnjn mcbt tpps zlmc'         # پسورد اپلیکیشن جیمیل که ساختی
 DEFAULT_FROM_EMAIL = EMAIL_HOST_USER

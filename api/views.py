@@ -9,7 +9,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from django.contrib.auth.models import User
 from django.db.models import Q
-from rest_framework.generics import RetrieveAPIView  # اضافه شده برای جزئیات محصول
+from rest_framework.generics import RetrieveAPIView
 
 from .models import EmailVerificationCode, Category, Product
 from .serializers import (
@@ -110,11 +110,17 @@ class ProductListByCategory(generics.ListAPIView):
 
         return queryset
 
+    def get_serializer_context(self):
+        return {'request': self.request}
+
 
 class ProductDetailView(RetrieveAPIView):
     queryset = Product.objects.all()
     serializer_class = ProductSerializer
     permission_classes = [permissions.AllowAny]
+
+    def get_serializer_context(self):
+        return {'request': self.request}
 
 
 class UserProfileView(APIView):
