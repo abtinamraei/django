@@ -105,5 +105,5 @@ EMAIL_HOST = 'smtp.gmail.com'
 EMAIL_USE_TLS = True
 EMAIL_PORT = 587
 EMAIL_HOST_USER = 'abtin.amraei@gmail.com'          # ایمیل خودت
-EMAIL_HOST_PASSWORD = 'پسورد_اپلیکیشن_گوگل_تو'    # پسورد اپلیکیشن جیمیل که ساختی
+EMAIL_HOST_PASSWORD = 'pnjn mcbt tpps zlmc'    # پسورد اپلیکیشن جیمیل که ساختی
 DEFAULT_FROM_EMAIL = EMAIL_HOST_USER

@@ -31,10 +31,19 @@ class ProductSerializer(serializers.ModelSerializer):
         source='category',
         write_only=True
     )
+    image_url = serializers.SerializerMethodField()
 
     class Meta:
         model = Product
-        fields = ['id', 'name', 'category', 'category_id', 'price', 'emoji', 'description']
+        fields = ['id', 'name', 'category', 'category_id', 'price', 'emoji', 'description', 'image', 'image_url']
+
+    def get_image_url(self, obj):
+        request = self.context.get('request')
+        if obj.image and hasattr(obj.image, 'url'):
+            if request:
+                return request.build_absolute_uri(obj.image.url)
+            return obj.image.url
+        return None
 
 class EmailSerializer(serializers.Serializer):
     email = serializers.EmailField()
