@@ -10,6 +10,7 @@ from .views import (
     VerifyEmailCodeView,
     RegisterWithEmailView,
     ProductDetailView,
+    ProductSizeListView,
 )
 
 urlpatterns = [
@@ -17,6 +18,8 @@ urlpatterns = [
     path('products/<int:pk>/', ProductDetailView.as_view(), name='product-detail'),
 
     path('categories/', CategoryListView.as_view(), name='categories-list'),
+
+    path('sizes/', ProductSizeListView.as_view(), name='sizes-list'),
 
     path('auth/login/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
     path('auth/refresh/', TokenRefreshView.as_view(), name='token_refresh'),

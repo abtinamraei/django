@@ -1,7 +1,8 @@
 from rest_framework import serializers
 from django.contrib.auth.models import User
-from .models import Product, Category, EmailVerificationCode, ProductColor, ProductSize
-
+from .models import (
+    Product, Category, EmailVerificationCode, ProductColor, ProductSize
+)
 
 class RegisterSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True, min_length=6)
@@ -50,7 +51,7 @@ class ProductSerializer(serializers.ModelSerializer):
     )
     colors = ProductColorSerializer(many=True, read_only=True)
     image_url = serializers.SerializerMethodField()
-    price = serializers.SerializerMethodField()  # قیمت پایه یا حداقل قیمت وریانت ها
+    price = serializers.SerializerMethodField()  # قیمت پایه یا کمترین قیمت از سایزها
 
     class Meta:
         model = Product
@@ -68,7 +69,6 @@ class ProductSerializer(serializers.ModelSerializer):
         return None
 
     def get_price(self, obj):
-        # قیمت پایه یا کمترین قیمت از سایزهای رنگ ها
         sizes = ProductSize.objects.filter(color__product=obj)
         if sizes.exists():
             return min(size.price for size in sizes)
