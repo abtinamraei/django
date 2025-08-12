@@ -24,7 +24,7 @@ class RegisterSerializer(serializers.ModelSerializer):
 class CategorySerializer(serializers.ModelSerializer):
     class Meta:
         model = Category
-        fields = ['id', 'name', 'emoji', 'description']
+        fields = ['id', 'name', 'description']  # emoji حذف شد
 
 
 class ProductVariantSerializer(serializers.ModelSerializer):
@@ -40,14 +40,15 @@ class ProductSerializer(serializers.ModelSerializer):
         source='category',
         write_only=True
     )
-    variants = ProductVariantSerializer(many=True, read_only=True)  # اضافه کردن وریانت‌ها
+    variants = ProductVariantSerializer(many=True, read_only=True)
     image_url = serializers.SerializerMethodField()
+    price = serializers.SerializerMethodField()  # قیمت پویا بر اساس اولین واریانت یا قیمت پایه
 
     class Meta:
         model = Product
         fields = [
             'id', 'name', 'category', 'category_id', 'price',
-            'emoji', 'description', 'image', 'image_url', 'variants'
+            'description', 'image', 'image_url', 'variants'
         ]
 
     def get_image_url(self, obj):
@@ -57,6 +58,12 @@ class ProductSerializer(serializers.ModelSerializer):
                 return request.build_absolute_uri(obj.image.url)
             return obj.image.url
         return None
+
+    def get_price(self, obj):
+        # اگر واریانت داشت، قیمت اولین واریانت را برگردان
+        if obj.variants.exists():
+            return obj.variants.first().price
+        return obj.price
 
 
 class EmailSerializer(serializers.Serializer):
@@ -81,7 +88,7 @@ class RegisterWithEmailSerializer(serializers.ModelSerializer):
             evc = EmailVerificationCode.objects.get(email=value)
         except EmailVerificationCode.DoesNotExist:
             raise serializers.ValidationError("ابتدا ایمیل را تایید کنید.")
-        
+
         if evc.is_expired():
             raise serializers.ValidationError("کد تایید ایمیل منقضی شده است.")
         return value
