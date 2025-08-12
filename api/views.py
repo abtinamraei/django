@@ -3,21 +3,18 @@ from django.core.mail import send_mail
 from django.conf import settings
 from django.views.decorators.csrf import csrf_exempt
 from django.utils.decorators import method_decorator
-from django.db.models import Q
 
 from rest_framework import generics, status, permissions
 from rest_framework.response import Response
 from rest_framework.views import APIView
-from rest_framework.generics import RetrieveAPIView
 from django.contrib.auth.models import User
+from django.db.models import Q
+from rest_framework.generics import RetrieveAPIView
 
-from .models import (
-    Category, Product, ProductColor, ProductSize, EmailVerificationCode
-)
+from .models import EmailVerificationCode, Category, Product
 from .serializers import (
-    CategorySerializer, ProductSerializer, ProductColorSerializer, ProductSizeSerializer,
     EmailSerializer, VerifyEmailCodeSerializer, RegisterWithEmailSerializer,
-    RegisterSerializer
+    RegisterSerializer, CategorySerializer, ProductSerializer
 )
 
 
@@ -157,43 +154,3 @@ class ChangePasswordView(APIView):
         user.save()
 
         return Response({'detail': 'رمز عبور با موفقیت تغییر یافت.'}, status=status.HTTP_200_OK)
-
-
-# ==== ویوهای مدل ProductColor ====
-
-class ProductColorListCreateView(generics.ListCreateAPIView):
-    queryset = ProductColor.objects.all()
-    serializer_class = ProductColorSerializer
-    permission_classes = [permissions.AllowAny]
-
-    def get_queryset(self):
-        product_id = self.request.query_params.get('product')
-        if product_id:
-            return self.queryset.filter(product_id=product_id)
-        return self.queryset
-
-
-class ProductColorDetailView(generics.RetrieveUpdateDestroyAPIView):
-    queryset = ProductColor.objects.all()
-    serializer_class = ProductColorSerializer
-    permission_classes = [permissions.AllowAny]
-
-
-# ==== ویوهای مدل ProductSize ====
-
-class ProductSizeListCreateView(generics.ListCreateAPIView):
-    queryset = ProductSize.objects.all()
-    serializer_class = ProductSizeSerializer
-    permission_classes = [permissions.AllowAny]
-
-    def get_queryset(self):
-        color_id = self.request.query_params.get('color')
-        if color_id:
-            return self.queryset.filter(color_id=color_id)
-        return self.queryset
-
-
-class ProductSizeDetailView(generics.RetrieveUpdateDestroyAPIView):
-    queryset = ProductSize.objects.all()
-    serializer_class = ProductSizeSerializer
-    permission_classes = [permissions.AllowAny]

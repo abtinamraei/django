@@ -1,6 +1,6 @@
 from rest_framework import serializers
 from django.contrib.auth.models import User
-from .models import Category, Product, ProductColor, ProductSize, EmailVerificationCode
+from .models import Product, Category, EmailVerificationCode, ProductColor, ProductSize
 
 
 class RegisterSerializer(serializers.ModelSerializer):
@@ -30,15 +30,15 @@ class CategorySerializer(serializers.ModelSerializer):
 class ProductSizeSerializer(serializers.ModelSerializer):
     class Meta:
         model = ProductSize
-        fields = ['id', 'color', 'size', 'price', 'stock']
+        fields = ['id', 'size', 'price', 'stock']
 
 
 class ProductColorSerializer(serializers.ModelSerializer):
-    sizes = ProductSizeSerializer(many=True, read_only=True)
-
+    # اگر بخوای سایزهای مربوط به رنگ رو اینجا اضافه کنی باید رابطه داشته باشی بین رنگ و سایز
+    # اما الان سایز مستقل از رنگ است، پس اینجا فقط رنگ رو نمایش میدیم
     class Meta:
         model = ProductColor
-        fields = ['id', 'color', 'sizes']
+        fields = ['id', 'color']
 
 
 class ProductSerializer(serializers.ModelSerializer):
@@ -49,6 +49,8 @@ class ProductSerializer(serializers.ModelSerializer):
         write_only=True
     )
     colors = ProductColorSerializer(many=True, read_only=True)
+    # چون سایز مستقل است، آن را جداگانه اضافه می‌کنیم
+    sizes = ProductSizeSerializer(many=True, read_only=True)
     image_url = serializers.SerializerMethodField()
     price = serializers.SerializerMethodField()
 
@@ -56,7 +58,7 @@ class ProductSerializer(serializers.ModelSerializer):
         model = Product
         fields = [
             'id', 'name', 'category', 'category_id', 'price',
-            'description', 'image', 'image_url', 'colors'
+            'description', 'image', 'image_url', 'colors', 'sizes'
         ]
 
     def get_image_url(self, obj):
@@ -68,7 +70,7 @@ class ProductSerializer(serializers.ModelSerializer):
         return None
 
     def get_price(self, obj):
-        sizes = ProductSize.objects.filter(color__product=obj)
+        sizes = obj.sizes.all()
         if sizes.exists():
             return min(size.price for size in sizes)
         return obj.price

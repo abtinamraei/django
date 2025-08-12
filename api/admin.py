@@ -15,4 +15,5 @@ class ProductAdmin(admin.ModelAdmin):
 
 admin.site.register(Category)
 admin.site.register(Product, ProductAdmin)
-# نیازی نیست رنگ و سایز رو جدا ثبت کنیم چون داخل inline هستن
+admin.site.register(ProductColor)
+admin.site.register(ProductSize)
