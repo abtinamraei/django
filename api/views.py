@@ -11,10 +11,10 @@ from django.contrib.auth.models import User
 from django.db.models import Q
 from rest_framework.generics import RetrieveAPIView
 
-from .models import EmailVerificationCode, Category, Product, ProductSize
+from .models import EmailVerificationCode, Category, Product
 from .serializers import (
     EmailSerializer, VerifyEmailCodeSerializer, RegisterWithEmailSerializer,
-    RegisterSerializer, CategorySerializer, ProductSerializer, ProductSizeSerializer
+    RegisterSerializer, CategorySerializer, ProductSerializer
 )
 
 
@@ -154,14 +154,3 @@ class ChangePasswordView(APIView):
         user.save()
 
         return Response({'detail': 'رمز عبور با موفقیت تغییر یافت.'}, status=status.HTTP_200_OK)
-
-
-class ProductSizeListView(generics.ListAPIView):
-    serializer_class = ProductSizeSerializer
-    permission_classes = [permissions.AllowAny]
-
-    def get_queryset(self):
-        color_id = self.request.query_params.get('color_id')
-        if color_id:
-            return ProductSize.objects.filter(color_id=color_id)
-        return ProductSize.objects.all()

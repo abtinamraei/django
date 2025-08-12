@@ -9,7 +9,6 @@ class Category(models.Model):
     def __str__(self):
         return self.name
 
-
 class Product(models.Model):
     name = models.CharField(max_length=100)
     category = models.ForeignKey(Category, on_delete=models.CASCADE, related_name='products')
@@ -20,7 +19,6 @@ class Product(models.Model):
     def __str__(self):
         return self.name
 
-
 class ProductColor(models.Model):
     product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name='colors')
     color = models.CharField(max_length=50)
@@ -28,16 +26,14 @@ class ProductColor(models.Model):
     def __str__(self):
         return f"{self.product.name} - رنگ: {self.color}"
 
-
 class ProductSize(models.Model):
     color = models.ForeignKey(ProductColor, on_delete=models.CASCADE, related_name='sizes')
     size = models.CharField(max_length=50)
-    price = models.DecimalField(max_digits=10, decimal_places=2)  # قیمت برای این سایز خاص رنگ
+    price = models.DecimalField(max_digits=10, decimal_places=2)  # قیمت سایز در این رنگ خاص
     stock = models.PositiveIntegerField(default=0)
 
     def __str__(self):
         return f"{self.color.product.name} - رنگ: {self.color.color} - سایز: {self.size}"
-
 
 class EmailVerificationCode(models.Model):
     email = models.EmailField(unique=True)

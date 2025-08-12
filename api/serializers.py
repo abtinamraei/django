@@ -1,8 +1,6 @@
 from rest_framework import serializers
 from django.contrib.auth.models import User
-from .models import (
-    Product, Category, EmailVerificationCode, ProductColor, ProductSize
-)
+from .models import Product, Category, EmailVerificationCode, ProductColor, ProductSize
 
 class RegisterSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True, min_length=6)
@@ -21,18 +19,15 @@ class RegisterSerializer(serializers.ModelSerializer):
         )
         return user
 
-
 class CategorySerializer(serializers.ModelSerializer):
     class Meta:
         model = Category
         fields = ['id', 'name', 'description']
 
-
 class ProductSizeSerializer(serializers.ModelSerializer):
     class Meta:
         model = ProductSize
         fields = ['id', 'size', 'price', 'stock']
-
 
 class ProductColorSerializer(serializers.ModelSerializer):
     sizes = ProductSizeSerializer(many=True, read_only=True)
@@ -40,7 +35,6 @@ class ProductColorSerializer(serializers.ModelSerializer):
     class Meta:
         model = ProductColor
         fields = ['id', 'color', 'sizes']
-
 
 class ProductSerializer(serializers.ModelSerializer):
     category = CategorySerializer(read_only=True)
@@ -51,7 +45,7 @@ class ProductSerializer(serializers.ModelSerializer):
     )
     colors = ProductColorSerializer(many=True, read_only=True)
     image_url = serializers.SerializerMethodField()
-    price = serializers.SerializerMethodField()  # قیمت پایه یا کمترین قیمت از سایزها
+    price = serializers.SerializerMethodField()
 
     class Meta:
         model = Product
@@ -74,15 +68,12 @@ class ProductSerializer(serializers.ModelSerializer):
             return min(size.price for size in sizes)
         return obj.price
 
-
 class EmailSerializer(serializers.Serializer):
     email = serializers.EmailField()
-
 
 class VerifyEmailCodeSerializer(serializers.Serializer):
     email = serializers.EmailField()
     code = serializers.CharField(max_length=6)
-
 
 class RegisterWithEmailSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True, min_length=6)
