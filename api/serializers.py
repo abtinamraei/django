@@ -1,6 +1,6 @@
 from rest_framework import serializers
 from django.contrib.auth.models import User
-from .models import Product, Category, EmailVerificationCode, ProductVariant
+from .models import Product, Category, EmailVerificationCode, ProductColor, ProductSize
 
 
 class RegisterSerializer(serializers.ModelSerializer):
@@ -27,10 +27,18 @@ class CategorySerializer(serializers.ModelSerializer):
         fields = ['id', 'name', 'description']
 
 
-class ProductVariantSerializer(serializers.ModelSerializer):
+class ProductSizeSerializer(serializers.ModelSerializer):
     class Meta:
-        model = ProductVariant
-        fields = ['id', 'color', 'size', 'price', 'stock']
+        model = ProductSize
+        fields = ['id', 'size', 'price', 'stock']
+
+
+class ProductColorSerializer(serializers.ModelSerializer):
+    sizes = ProductSizeSerializer(many=True, read_only=True)
+
+    class Meta:
+        model = ProductColor
+        fields = ['id', 'color', 'sizes']
 
 
 class ProductSerializer(serializers.ModelSerializer):
@@ -40,15 +48,15 @@ class ProductSerializer(serializers.ModelSerializer):
         source='category',
         write_only=True
     )
-    variants = ProductVariantSerializer(many=True, read_only=True)
+    colors = ProductColorSerializer(many=True, read_only=True)
     image_url = serializers.SerializerMethodField()
-    price = serializers.SerializerMethodField()
+    price = serializers.SerializerMethodField()  # قیمت پایه یا حداقل قیمت وریانت ها
 
     class Meta:
         model = Product
         fields = [
             'id', 'name', 'category', 'category_id', 'price',
-            'description', 'image', 'image_url', 'variants'
+            'description', 'image', 'image_url', 'colors'
         ]
 
     def get_image_url(self, obj):
@@ -60,8 +68,10 @@ class ProductSerializer(serializers.ModelSerializer):
         return None
 
     def get_price(self, obj):
-        if obj.variants.exists():
-            return obj.variants.first().price
+        # قیمت پایه یا کمترین قیمت از سایزهای رنگ ها
+        sizes = ProductSize.objects.filter(color__product=obj)
+        if sizes.exists():
+            return min(size.price for size in sizes)
         return obj.price
 
 
