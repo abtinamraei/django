@@ -16,7 +16,6 @@ from .serializers import (
     EmailSerializer, VerifyEmailCodeSerializer, RegisterWithEmailSerializer,
     RegisterSerializer, CategorySerializer, ProductSerializer
 )
-from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 
 
 @method_decorator(csrf_exempt, name='dispatch')

@@ -24,7 +24,7 @@ class RegisterSerializer(serializers.ModelSerializer):
 class CategorySerializer(serializers.ModelSerializer):
     class Meta:
         model = Category
-        fields = ['id', 'name', 'description']  # emoji حذف شد
+        fields = ['id', 'name', 'description']
 
 
 class ProductVariantSerializer(serializers.ModelSerializer):
@@ -42,7 +42,7 @@ class ProductSerializer(serializers.ModelSerializer):
     )
     variants = ProductVariantSerializer(many=True, read_only=True)
     image_url = serializers.SerializerMethodField()
-    price = serializers.SerializerMethodField()  # قیمت پویا بر اساس اولین واریانت یا قیمت پایه
+    price = serializers.SerializerMethodField()
 
     class Meta:
         model = Product
@@ -60,7 +60,6 @@ class ProductSerializer(serializers.ModelSerializer):
         return None
 
     def get_price(self, obj):
-        # اگر واریانت داشت، قیمت اولین واریانت را برگردان
         if obj.variants.exists():
             return obj.variants.first().price
         return obj.price

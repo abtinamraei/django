@@ -9,12 +9,12 @@ from .views import (
     SendEmailVerificationCodeView,
     VerifyEmailCodeView,
     RegisterWithEmailView,
-    ProductDetailView,  # اضافه شده
+    ProductDetailView,
 )
 
 urlpatterns = [
     path('products/', ProductListByCategory.as_view(), name='products-list'),
-    path('products/<int:pk>/', ProductDetailView.as_view(), name='product-detail'),  # مسیر جدید
+    path('products/<int:pk>/', ProductDetailView.as_view(), name='product-detail'),
 
     path('categories/', CategoryListView.as_view(), name='categories-list'),
 
