@@ -21,15 +21,22 @@ class Product(models.Model):
         return self.name
 
 
-class ProductVariant(models.Model):
-    product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name='variants')
+class ProductColor(models.Model):
+    product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name='colors')
     color = models.CharField(max_length=50)
+
+    def __str__(self):
+        return f"{self.product.name} - رنگ: {self.color}"
+
+
+class ProductSize(models.Model):
+    color = models.ForeignKey(ProductColor, on_delete=models.CASCADE, related_name='sizes')
     size = models.CharField(max_length=50)
-    price = models.DecimalField(max_digits=10, decimal_places=2)
+    price = models.DecimalField(max_digits=10, decimal_places=2)  # قیمت برای این سایز خاص رنگ
     stock = models.PositiveIntegerField(default=0)
 
     def __str__(self):
-        return f"{self.product.name} - رنگ: {self.color} - سایز: {self.size}"
+        return f"{self.color.product.name} - رنگ: {self.color.color} - سایز: {self.size}"
 
 
 class EmailVerificationCode(models.Model):

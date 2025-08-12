@@ -1,14 +1,19 @@
+import nested_admin
 from django.contrib import admin
-from .models import Category, Product, ProductVariant
+from .models import Category, Product, ProductColor, ProductSize
 
-class ProductVariantInline(admin.TabularInline):
-    model = ProductVariant
-    extra = 1  # فرم‌های خالی برای افزودن وریانت جدید
+class ProductSizeInline(nested_admin.NestedTabularInline):
+    model = ProductSize
+    extra = 1
 
-class ProductAdmin(admin.ModelAdmin):
+class ProductColorInline(nested_admin.NestedStackedInline):
+    model = ProductColor
+    extra = 1
+    inlines = [ProductSizeInline]
+
+class ProductAdmin(nested_admin.NestedModelAdmin):
     list_display = ['name', 'category', 'price']
-    inlines = [ProductVariantInline]
+    inlines = [ProductColorInline]
 
 admin.site.register(Category)
 admin.site.register(Product, ProductAdmin)
-# admin.site.register(ProductVariant)  # چون وریانت‌ها در محصول inline هستند، نیازی به ثبت جداگانه نیست
