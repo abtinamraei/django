@@ -1,6 +1,7 @@
 from rest_framework import serializers
 from django.contrib.auth.models import User
-from .models import Product, Category, EmailVerificationCode
+from .models import Product, Category, EmailVerificationCode, ProductVariant
+
 
 class RegisterSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True, min_length=6)
@@ -19,10 +20,18 @@ class RegisterSerializer(serializers.ModelSerializer):
         )
         return user
 
+
 class CategorySerializer(serializers.ModelSerializer):
     class Meta:
         model = Category
         fields = ['id', 'name', 'emoji', 'description']
+
+
+class ProductVariantSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ProductVariant
+        fields = ['id', 'color', 'size', 'price', 'stock']
+
 
 class ProductSerializer(serializers.ModelSerializer):
     category = CategorySerializer(read_only=True)
@@ -31,11 +40,15 @@ class ProductSerializer(serializers.ModelSerializer):
         source='category',
         write_only=True
     )
+    variants = ProductVariantSerializer(many=True, read_only=True)  # اضافه کردن وریانت‌ها
     image_url = serializers.SerializerMethodField()
 
     class Meta:
         model = Product
-        fields = ['id', 'name', 'category', 'category_id', 'price', 'emoji', 'description', 'image', 'image_url']
+        fields = [
+            'id', 'name', 'category', 'category_id', 'price',
+            'emoji', 'description', 'image', 'image_url', 'variants'
+        ]
 
     def get_image_url(self, obj):
         request = self.context.get('request')
@@ -45,12 +58,15 @@ class ProductSerializer(serializers.ModelSerializer):
             return obj.image.url
         return None
 
+
 class EmailSerializer(serializers.Serializer):
     email = serializers.EmailField()
+
 
 class VerifyEmailCodeSerializer(serializers.Serializer):
     email = serializers.EmailField()
     code = serializers.CharField(max_length=6)
+
 
 class RegisterWithEmailSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True, min_length=6)
