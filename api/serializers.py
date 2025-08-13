@@ -33,9 +33,11 @@ class ProductSizeSerializer(serializers.ModelSerializer):
 
 
 class ProductColorSerializer(serializers.ModelSerializer):
+    sizes = ProductSizeSerializer(many=True, read_only=True)
+
     class Meta:
         model = ProductColor
-        fields = ['id', 'name', 'hex_code']
+        fields = ['id', 'name', 'hex_code', 'sizes']
 
 
 class ProductSerializer(serializers.ModelSerializer):
@@ -46,7 +48,6 @@ class ProductSerializer(serializers.ModelSerializer):
         write_only=True
     )
     colors = ProductColorSerializer(many=True, read_only=True)
-    sizes = ProductSizeSerializer(many=True, read_only=True)
     image_url = serializers.SerializerMethodField()
     price = serializers.SerializerMethodField()
 
@@ -54,7 +55,7 @@ class ProductSerializer(serializers.ModelSerializer):
         model = Product
         fields = [
             'id', 'name', 'category', 'category_id', 'price',
-            'description', 'image', 'image_url', 'colors', 'sizes'
+            'description', 'image', 'image_url', 'colors'
         ]
 
     def get_image_url(self, obj):
@@ -66,7 +67,7 @@ class ProductSerializer(serializers.ModelSerializer):
         return None
 
     def get_price(self, obj):
-        sizes = obj.sizes.all()
+        sizes = ProductSize.objects.filter(color__product=obj)
         if sizes.exists():
             return min(size.price for size in sizes)
         return obj.price
