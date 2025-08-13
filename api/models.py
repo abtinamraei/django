@@ -8,7 +8,6 @@ class EmailVerificationCode(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
 
     def is_expired(self):
-        # کد بعد از 10 دقیقه منقضی می‌شود
         expiration_time = self.created_at + timedelta(minutes=10)
         return timezone.now() > expiration_time
 
@@ -46,6 +45,8 @@ class ProductColor(models.Model):
 class ProductSize(models.Model):
     product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name='sizes')
     size = models.CharField(max_length=20)  # مثلا S, M, L, XL یا عددی
+    price = models.DecimalField(max_digits=10, decimal_places=2)
+    stock = models.PositiveIntegerField(default=0)
 
     def __str__(self):
         return f"{self.product.name} - {self.size}"

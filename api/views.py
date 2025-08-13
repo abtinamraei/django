@@ -3,20 +3,19 @@ from django.core.mail import send_mail
 from django.conf import settings
 from django.views.decorators.csrf import csrf_exempt
 from django.utils.decorators import method_decorator
+from django.db.models import Q
 
 from rest_framework import generics, status, permissions
 from rest_framework.response import Response
 from rest_framework.views import APIView
-from django.contrib.auth.models import User
-from django.db.models import Q
 from rest_framework.generics import RetrieveAPIView
+from django.contrib.auth.models import User
 
 from .models import EmailVerificationCode, Category, Product
 from .serializers import (
     EmailSerializer, VerifyEmailCodeSerializer, RegisterWithEmailSerializer,
     RegisterSerializer, CategorySerializer, ProductSerializer
 )
-
 
 @method_decorator(csrf_exempt, name='dispatch')
 class SendEmailVerificationCodeView(APIView):
@@ -27,8 +26,7 @@ class SendEmailVerificationCodeView(APIView):
         if serializer.is_valid():
             email = serializer.validated_data['email']
             code = ''.join([str(random.randint(0, 9)) for _ in range(6)])
-
-            obj, created = EmailVerificationCode.objects.update_or_create(
+            EmailVerificationCode.objects.update_or_create(
                 email=email,
                 defaults={'code': code}
             )
@@ -40,7 +38,6 @@ class SendEmailVerificationCodeView(APIView):
                 [email],
                 fail_silently=False,
             )
-
             return Response({'detail': 'کد تایید به ایمیل شما ارسال شد.'})
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
@@ -98,15 +95,12 @@ class ProductListByCategory(generics.ListAPIView):
         search_term = self.request.query_params.get('search')
 
         queryset = Product.objects.all()
-
         if category_name and category_name.lower() != 'all':
             queryset = queryset.filter(category__name=category_name)
-
         if search_term:
             queryset = queryset.filter(
                 Q(name__icontains=search_term) | Q(description__icontains=search_term)
             )
-
         return queryset
 
     def get_serializer_context(self):

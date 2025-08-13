@@ -2,7 +2,6 @@ from rest_framework import serializers
 from django.contrib.auth.models import User
 from .models import Product, Category, EmailVerificationCode, ProductColor, ProductSize
 
-
 class RegisterSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True, min_length=6)
 
@@ -24,7 +23,7 @@ class RegisterSerializer(serializers.ModelSerializer):
 class CategorySerializer(serializers.ModelSerializer):
     class Meta:
         model = Category
-        fields = ['id', 'name', 'description']
+        fields = ['id', 'name']
 
 
 class ProductSizeSerializer(serializers.ModelSerializer):
@@ -34,11 +33,9 @@ class ProductSizeSerializer(serializers.ModelSerializer):
 
 
 class ProductColorSerializer(serializers.ModelSerializer):
-    # اگر بخوای سایزهای مربوط به رنگ رو اینجا اضافه کنی باید رابطه داشته باشی بین رنگ و سایز
-    # اما الان سایز مستقل از رنگ است، پس اینجا فقط رنگ رو نمایش میدیم
     class Meta:
         model = ProductColor
-        fields = ['id', 'color']
+        fields = ['id', 'name', 'hex_code']
 
 
 class ProductSerializer(serializers.ModelSerializer):
@@ -49,7 +46,6 @@ class ProductSerializer(serializers.ModelSerializer):
         write_only=True
     )
     colors = ProductColorSerializer(many=True, read_only=True)
-    # چون سایز مستقل است، آن را جداگانه اضافه می‌کنیم
     sizes = ProductSizeSerializer(many=True, read_only=True)
     image_url = serializers.SerializerMethodField()
     price = serializers.SerializerMethodField()
