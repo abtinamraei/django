@@ -1,5 +1,6 @@
 from pathlib import Path
 from datetime import timedelta
+import mongoengine
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -53,17 +54,11 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'backend.wsgi.application'
 
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'froshgahaaw_db',
-        'USER': 'postgres',
-        'PASSWORD': 'mF2SUpL!paap8PMq4eDd',
-        'HOST': 'remote-fanhab.runflare.com',
-        'PORT': '31217',
-    }
-}
+# --- اتصال MongoDB با MongoEngine ---
+MONGO_URI = 'mongodb://admin:pnTe7TIfh72DhVeKRsav@remote-fanhab.runflare.com:31641/admin'
+mongoengine.connect(host=MONGO_URI)
 
+# --- اعتبارسنجی رمز عبور ---
 AUTH_PASSWORD_VALIDATORS = [
     {'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator'},
     {'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator'},
@@ -78,7 +73,6 @@ USE_TZ = True
 
 STATIC_URL = '/static/'
 STATIC_ROOT = BASE_DIR / 'staticfiles'
-
 STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
 MEDIA_URL = '/media/'
@@ -103,10 +97,11 @@ SIMPLE_JWT = {
     'AUTH_HEADER_TYPES': ('Bearer',),
 }
 
+# --- تنظیم ایمیل ---
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 EMAIL_HOST = 'smtp.gmail.com'
 EMAIL_USE_TLS = True
 EMAIL_PORT = 587
-EMAIL_HOST_USER = 'abtin.amraei@gmail.com'          # ایمیل خودت
-EMAIL_HOST_PASSWORD = 'pnjn mcbt tpps zlmc'         # پسورد اپلیکیشن جیمیل
+EMAIL_HOST_USER = 'abtin.amraei@gmail.com'
+EMAIL_HOST_PASSWORD = 'pnjn mcbt tpps zlmc'
 DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
