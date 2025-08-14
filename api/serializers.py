@@ -1,6 +1,9 @@
 from rest_framework import serializers
 from django.contrib.auth.models import User
-from .models import Product, Category, EmailVerificationCode, ProductColor, ProductSize
+from .models import (
+    Product, Category, EmailVerificationCode,
+    ProductColor, ProductSize, CartItem
+)
 
 class RegisterSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True, min_length=6)
@@ -110,3 +113,15 @@ class RegisterWithEmailSerializer(serializers.ModelSerializer):
         )
         EmailVerificationCode.objects.filter(email=validated_data['email']).delete()
         return user
+
+
+class CartItemSerializer(serializers.ModelSerializer):
+    product_name = serializers.CharField(source='product_size.color.product.name', read_only=True)
+    color_name = serializers.CharField(source='product_size.color.name', read_only=True)
+    size = serializers.CharField(source='product_size.size', read_only=True)
+    price = serializers.DecimalField(source='product_size.price', max_digits=10, decimal_places=0, read_only=True)
+    stock = serializers.IntegerField(source='product_size.stock', read_only=True)
+
+    class Meta:
+        model = CartItem
+        fields = ['id', 'product_size', 'quantity', 'product_name', 'color_name', 'size', 'price', 'stock']

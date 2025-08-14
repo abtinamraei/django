@@ -7,14 +7,18 @@ from django.db.models import Q
 from rest_framework import generics, status, permissions
 from rest_framework.response import Response
 from rest_framework.views import APIView
-from rest_framework.generics import RetrieveAPIView
+from rest_framework.generics import RetrieveAPIView, CreateAPIView
+from rest_framework.permissions import IsAuthenticated
 from django.contrib.auth.models import User
-
-from .models import EmailVerificationCode, Category, Product, ProductColor, ProductSize
+from .models import (
+    EmailVerificationCode, Category, Product, ProductColor,
+    ProductSize, CartItem
+)
 from .serializers import (
     EmailSerializer, VerifyEmailCodeSerializer, RegisterWithEmailSerializer,
-    RegisterSerializer, CategorySerializer, ProductSerializer
+    RegisterSerializer, CategorySerializer, ProductSerializer, CartItemSerializer
 )
+
 
 @method_decorator(csrf_exempt, name='dispatch')
 class SendEmailVerificationCodeView(APIView):
@@ -62,13 +66,13 @@ class VerifyEmailCodeView(APIView):
 
 
 @method_decorator(csrf_exempt, name='dispatch')
-class RegisterWithEmailView(generics.CreateAPIView):
+class RegisterWithEmailView(CreateAPIView):
     serializer_class = RegisterWithEmailSerializer
     permission_classes = []
 
 
 @method_decorator(csrf_exempt, name='dispatch')
-class RegisterView(generics.CreateAPIView):
+class RegisterView(CreateAPIView):
     serializer_class = RegisterSerializer
     permission_classes = []
 
@@ -107,7 +111,7 @@ class ProductDetailView(RetrieveAPIView):
 
 
 class UserProfileView(APIView):
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [IsAuthenticated]
 
     def get(self, request):
         user = request.user
@@ -121,7 +125,7 @@ class UserProfileView(APIView):
 
 @method_decorator(csrf_exempt, name='dispatch')
 class ChangePasswordView(APIView):
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [IsAuthenticated]
 
     def post(self, request):
         user = request.user
@@ -134,3 +138,59 @@ class ChangePasswordView(APIView):
         user.set_password(new_password)
         user.save()
         return Response({'detail': 'رمز عبور با موفقیت تغییر یافت.'}, status=status.HTTP_200_OK)
+
+
+# ---------------------- Cart API ----------------------
+class CartItemListCreateView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        items = CartItem.objects.filter(user=request.user)
+        serializer = CartItemSerializer(items, many=True)
+        return Response(serializer.data)
+
+    def post(self, request):
+        serializer = CartItemSerializer(data=request.data, context={'request': request})
+        if serializer.is_valid():
+            product_size = serializer.validated_data['product_size']
+            quantity = serializer.validated_data.get('quantity', 1)
+            cart_item, created = CartItem.objects.get_or_create(
+                user=request.user,
+                product_size=product_size,
+                defaults={'quantity': quantity}
+            )
+            if not created:
+                cart_item.quantity += quantity
+                if cart_item.quantity > product_size.stock:
+                    cart_item.quantity = product_size.stock
+                cart_item.save()
+            return Response(CartItemSerializer(cart_item).data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+class CartItemUpdateDeleteView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def put(self, request, pk):
+        try:
+            cart_item = CartItem.objects.get(pk=pk, user=request.user)
+        except CartItem.DoesNotExist:
+            return Response({'detail': 'آیتم سبد یافت نشد.'}, status=status.HTTP_404_NOT_FOUND)
+        quantity = request.data.get('quantity')
+        if quantity is not None:
+            if int(quantity) <= 0:
+                cart_item.delete()
+                return Response({'detail': 'آیتم حذف شد.'})
+            if int(quantity) > cart_item.product_size.stock:
+                quantity = cart_item.product_size.stock
+            cart_item.quantity = quantity
+            cart_item.save()
+        return Response(CartItemSerializer(cart_item).data)
+
+    def delete(self, request, pk):
+        try:
+            cart_item = CartItem.objects.get(pk=pk, user=request.user)
+        except CartItem.DoesNotExist:
+            return Response({'detail': 'آیتم سبد یافت نشد.'}, status=status.HTTP_404_NOT_FOUND)
+        cart_item.delete()
+        return Response({'detail': 'آیتم حذف شد.'})
