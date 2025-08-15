@@ -1,13 +1,12 @@
-from django.conf import settings
-from django.conf.urls.static import static
 from django.urls import path, include
-from django.contrib import admin
+from django.http import JsonResponse
+
+def api_root(request):
+    return JsonResponse({"message": "API is running"})
 
 urlpatterns = [
-    path('admin/', admin.site.urls),
-    path('api/', include('api.urls')),
+    path('', api_root),  # مسیر روت تست API
+    path('auth/', include('api.auth_urls')),  # مسیرهای احراز هویت
+    path('categories/', include('api.categories_urls')),  # مسیرهای دسته‌بندی
+    path('products/', include('api.products_urls')),  # مسیرهای محصولات
 ]
-
-if settings.DEBUG:
-    urlpatterns += static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
-    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
