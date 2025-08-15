@@ -4,8 +4,10 @@ from datetime import timedelta
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 SECRET_KEY = 'یک_کلید_امنیتی_قوی_و_تصادفی'
-DEBUG = True
-ALLOWED_HOSTS = ['*']  # می‌تونی دامنه Render رو هم بذاری
+
+# ⚠️ برای Render و محیط واقعی
+DEBUG = False
+ALLOWED_HOSTS = ['django-rz65.onrender.com']  # دامنه واقعی پروژه
 
 # --- اپ‌ها ---
 INSTALLED_APPS = [
