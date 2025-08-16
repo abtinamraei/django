@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Category, Product, ProductColor, ProductSize, CartItem
+from .models import Category, Product, ProductColor, ProductSize, CartItem, ProductImage
 
 # Inline برای سایزها
 class ProductSizeInline(admin.TabularInline):
@@ -14,12 +14,18 @@ class ProductColorInline(admin.TabularInline):
     fields = ['name', 'hex_code']
     show_change_link = True
 
+# Inline برای تصاویر محصول
+class ProductImageInline(admin.TabularInline):
+    model = ProductImage
+    extra = 1
+    fields = ['image', 'alt_text']
+
 # مدیریت محصول
 class ProductAdmin(admin.ModelAdmin):
     list_display = ['name', 'category', 'min_price']
     list_filter = ['category']
     search_fields = ['name', 'description']
-    inlines = [ProductColorInline]
+    inlines = [ProductColorInline, ProductImageInline]  # اضافه شد
 
     def min_price(self, obj):
         sizes = ProductSize.objects.filter(color__product=obj)
@@ -56,4 +62,5 @@ admin.site.register(Category)
 admin.site.register(Product, ProductAdmin)
 admin.site.register(ProductColor, ProductColorAdmin)
 admin.site.register(ProductSize)
+admin.site.register(ProductImage)  # اضافه شد
 admin.site.register(CartItem, CartItemAdmin)
