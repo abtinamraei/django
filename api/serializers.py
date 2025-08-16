@@ -2,9 +2,10 @@ from rest_framework import serializers
 from django.contrib.auth.models import User
 from .models import (
     Product, Category, EmailVerificationCode,
-    ProductColor, ProductSize, CartItem
+    ProductColor, ProductSize, CartItem, ProductImage
 )
 
+# ----- کاربران -----
 class RegisterSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True, min_length=6)
 
@@ -22,18 +23,17 @@ class RegisterSerializer(serializers.ModelSerializer):
         )
         return user
 
-
+# ----- دسته‌بندی -----
 class CategorySerializer(serializers.ModelSerializer):
     class Meta:
         model = Category
         fields = ['id', 'name']
 
-
+# ----- سایز و رنگ -----
 class ProductSizeSerializer(serializers.ModelSerializer):
     class Meta:
         model = ProductSize
         fields = ['id', 'size', 'price', 'stock']
-
 
 class ProductColorSerializer(serializers.ModelSerializer):
     sizes = ProductSizeSerializer(many=True, read_only=True)
@@ -42,24 +42,13 @@ class ProductColorSerializer(serializers.ModelSerializer):
         model = ProductColor
         fields = ['id', 'name', 'hex_code', 'sizes']
 
-
-class ProductSerializer(serializers.ModelSerializer):
-    category = CategorySerializer(read_only=True)
-    category_id = serializers.PrimaryKeyRelatedField(
-        queryset=Category.objects.all(),
-        source='category',
-        write_only=True
-    )
-    colors = ProductColorSerializer(many=True, read_only=True)
+# ----- تصاویر محصول -----
+class ProductImageSerializer(serializers.ModelSerializer):
     image_url = serializers.SerializerMethodField()
-    price = serializers.SerializerMethodField()
 
     class Meta:
-        model = Product
-        fields = [
-            'id', 'name', 'category', 'category_id', 'price',
-            'description', 'image', 'image_url', 'colors'
-        ]
+        model = ProductImage
+        fields = ['id', 'image', 'image_url', 'order']
 
     def get_image_url(self, obj):
         request = self.context.get('request')
@@ -69,21 +58,38 @@ class ProductSerializer(serializers.ModelSerializer):
             return obj.image.url
         return None
 
+# ----- محصول -----
+class ProductSerializer(serializers.ModelSerializer):
+    category = CategorySerializer(read_only=True)
+    category_id = serializers.PrimaryKeyRelatedField(
+        queryset=Category.objects.all(),
+        source='category',
+        write_only=True
+    )
+    colors = ProductColorSerializer(many=True, read_only=True)
+    images = ProductImageSerializer(many=True, read_only=True)
+    price = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Product
+        fields = [
+            'id', 'name', 'category', 'category_id', 'price',
+            'description', 'colors', 'images'
+        ]
+
     def get_price(self, obj):
         sizes = ProductSize.objects.filter(color__product=obj)
         if sizes.exists():
             return min(size.price for size in sizes)
         return obj.price
 
-
+# ----- ایمیل و ثبت‌نام با کد -----
 class EmailSerializer(serializers.Serializer):
     email = serializers.EmailField()
-
 
 class VerifyEmailCodeSerializer(serializers.Serializer):
     email = serializers.EmailField()
     code = serializers.CharField(max_length=6)
-
 
 class RegisterWithEmailSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True, min_length=6)
@@ -114,7 +120,7 @@ class RegisterWithEmailSerializer(serializers.ModelSerializer):
         EmailVerificationCode.objects.filter(email=validated_data['email']).delete()
         return user
 
-
+# ----- سبد خرید -----
 class CartItemSerializer(serializers.ModelSerializer):
     product_name = serializers.CharField(source='product_size.color.product.name', read_only=True)
     color_name = serializers.CharField(source='product_size.color.name', read_only=True)
