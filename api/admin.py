@@ -1,5 +1,12 @@
 from django.contrib import admin
-from .models import Category, Product, ProductColor, ProductSize, CartItem, ProductImage
+from .models import Category, Product, ProductColor, ProductSize, ProductImage, CartItem
+
+# Inline برای تصاویر محصول
+class ProductImageInline(admin.TabularInline):
+    model = ProductImage
+    extra = 1
+    fields = ['image', 'order']
+    ordering = ['order']
 
 # Inline برای سایزها
 class ProductSizeInline(admin.TabularInline):
@@ -13,19 +20,14 @@ class ProductColorInline(admin.TabularInline):
     extra = 1
     fields = ['name', 'hex_code']
     show_change_link = True
-
-# Inline برای تصاویر محصول
-class ProductImageInline(admin.TabularInline):
-    model = ProductImage
-    extra = 1
-    fields = ['image', 'alt_text']
+    inlines = [ProductSizeInline]  # توجه: این فقط برای مدیریت رابطه است، ممکن است نیاز به Nested admin داشته باشیم
 
 # مدیریت محصول
 class ProductAdmin(admin.ModelAdmin):
     list_display = ['name', 'category', 'min_price']
     list_filter = ['category']
     search_fields = ['name', 'description']
-    inlines = [ProductColorInline, ProductImageInline]  # اضافه شد
+    inlines = [ProductColorInline, ProductImageInline]
 
     def min_price(self, obj):
         sizes = ProductSize.objects.filter(color__product=obj)
@@ -62,5 +64,5 @@ admin.site.register(Category)
 admin.site.register(Product, ProductAdmin)
 admin.site.register(ProductColor, ProductColorAdmin)
 admin.site.register(ProductSize)
-admin.site.register(ProductImage)  # اضافه شد
+admin.site.register(ProductImage)
 admin.site.register(CartItem, CartItemAdmin)
