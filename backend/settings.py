@@ -6,7 +6,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = 'یک_کلید_امنیتی_قوی_و_تصادفی'
 
 # ⚠️ برای Render و محیط واقعی
-DEBUG = False
+DEBUG = True
 ALLOWED_HOSTS = ['django-rz65.onrender.com','localhost']  # دامنه واقعی پروژه
 
 # --- اپ‌ها ---
