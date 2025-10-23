@@ -7,7 +7,7 @@ SECRET_KEY = 'یک_کلید_امنیتی_قوی_و_تصادفی'
 
 # ⚠️ برای Render و محیط واقعی
 DEBUG = True
-ALLOWED_HOSTS = ['django-rz65.onrender.com','localhost']  # دامنه واقعی پروژه
+ALLOWED_HOSTS = ['django-rz65.onrender.com', 'localhost']  # دامنه واقعی پروژه
 
 # --- اپ‌ها ---
 INSTALLED_APPS = [
@@ -57,15 +57,15 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'backend.wsgi.application'
 
-# --- دیتابیس PostgreSQL Render ---
+# --- دیتابیس PostgreSQL Render (External) ---
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'froshgah',
-        'USER': 'froshgah_ehhr_user',
-        'PASSWORD': 'aR1XsnBsrumhYjCSohaJmTVJCTR1zhav',
-        'HOST': 'dpg-d3t10todl3ps73b0mt90-a',
-        'PORT': '5432',
+        'NAME': 'froshgah_ehhr',  # نام دیتابیس
+        'USER': 'froshgah_ehhr_user',  # یوزرنیم
+        'PASSWORD': 'aR1XsnBsrumhYjCSohaJmTVJCTR1zhav',  # پسورد
+        'HOST': 'dpg-d3t10todl3ps73b0mt90-a.singapore-postgres.render.com',  # هاست External
+        'PORT': '5432',  # پورت
     }
 }
 
