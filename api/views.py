@@ -11,11 +11,13 @@ from rest_framework.generics import RetrieveAPIView, CreateAPIView
 from rest_framework.permissions import IsAuthenticated
 
 from .models import (
-    EmailVerificationCode, Category, Product, CartItem
+    EmailVerificationCode, Category, Product, CartItem,
+    ProductReview, Favorite
 )
 from .serializers import (
     EmailSerializer, VerifyEmailCodeSerializer, RegisterWithEmailSerializer,
-    RegisterSerializer, CategorySerializer, ProductSerializer, CartItemSerializer
+    RegisterSerializer, CategorySerializer, ProductSerializer, CartItemSerializer,
+    ProductReviewSerializer, FavoriteSerializer
 )
 
 # ---------------------- Auth APIs ----------------------
@@ -39,7 +41,7 @@ class SendEmailVerificationCodeView(APIView):
                 [email],
                 fail_silently=False,
             )
-            return Response({'detail': 'کد تایید به ایمیل شما ارسال شد.'})
+            return Response({'detail': 'کد تایید به ایمیل شما ارسال شد.'}, status=status.HTTP_200_OK)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
@@ -60,7 +62,7 @@ class VerifyEmailCodeView(APIView):
                 return Response({'detail': 'کد تایید منقضی شده است.'}, status=status.HTTP_400_BAD_REQUEST)
             if evc.code != code:
                 return Response({'detail': 'کد تایید اشتباه است.'}, status=status.HTTP_400_BAD_REQUEST)
-            return Response({'detail': 'ایمیل با موفقیت تایید شد.'})
+            return Response({'detail': 'ایمیل با موفقیت تایید شد.'}, status=status.HTTP_200_OK)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
@@ -74,6 +76,7 @@ class RegisterWithEmailView(CreateAPIView):
 class RegisterView(CreateAPIView):
     serializer_class = RegisterSerializer
     permission_classes = []
+
 
 # ---------------------- Category & Product APIs ----------------------
 class CategoryListView(generics.ListAPIView):
@@ -99,7 +102,6 @@ class ProductListByCategory(generics.ListAPIView):
                 Q(name__icontains=search_term) |
                 Q(description__icontains=search_term)
             )
-
         return queryset
 
     def get_serializer_context(self):
@@ -114,6 +116,7 @@ class ProductDetailView(RetrieveAPIView):
     def get_serializer_context(self):
         return {'request': self.request}
 
+
 # ---------------------- User APIs ----------------------
 class UserProfileView(APIView):
     permission_classes = [IsAuthenticated]
@@ -125,7 +128,7 @@ class UserProfileView(APIView):
             'email': user.email,
             'first_name': user.first_name,
             'last_name': user.last_name,
-        })
+        }, status=status.HTTP_200_OK)
 
 
 @method_decorator(csrf_exempt, name='dispatch')
@@ -140,7 +143,6 @@ class ChangePasswordView(APIView):
         if not old_password or not new_password:
             return Response({'detail': 'هر دو فیلد old_password و new_password الزامی هستند.'},
                             status=status.HTTP_400_BAD_REQUEST)
-
         if not user.check_password(old_password):
             return Response({'detail': 'رمز عبور فعلی اشتباه است.'}, status=status.HTTP_400_BAD_REQUEST)
 
@@ -148,14 +150,15 @@ class ChangePasswordView(APIView):
         user.save()
         return Response({'detail': 'رمز عبور با موفقیت تغییر یافت.'}, status=status.HTTP_200_OK)
 
+
 # ---------------------- Cart APIs ----------------------
 class CartItemListCreateView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
         items = CartItem.objects.filter(user=request.user)
-        serializer = CartItemSerializer(items, many=True)
-        return Response(serializer.data)
+        serializer = CartItemSerializer(items, many=True, context={'request': request})
+        return Response(serializer.data, status=status.HTTP_200_OK)
 
     def post(self, request):
         serializer = CartItemSerializer(data=request.data, context={'request': request})
@@ -172,36 +175,129 @@ class CartItemListCreateView(APIView):
                 if cart_item.quantity > product_size.stock:
                     cart_item.quantity = product_size.stock
                 cart_item.save()
-            return Response(CartItemSerializer(cart_item).data, status=status.HTTP_201_CREATED)
+            return Response(CartItemSerializer(cart_item, context={'request': request}).data,
+                            status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
 class CartItemUpdateDeleteView(APIView):
     permission_classes = [IsAuthenticated]
 
-    def put(self, request, pk):
+    def get_object(self, pk, user):
         try:
-            cart_item = CartItem.objects.get(pk=pk, user=request.user)
+            return CartItem.objects.get(pk=pk, user=user)
         except CartItem.DoesNotExist:
+            return None
+
+    def put(self, request, pk):
+        cart_item = self.get_object(pk, request.user)
+        if not cart_item:
             return Response({'detail': 'آیتم سبد یافت نشد.'}, status=status.HTTP_404_NOT_FOUND)
 
         quantity = request.data.get('quantity')
-        if quantity is not None:
-            quantity = int(quantity)
-            if quantity <= 0:
-                cart_item.delete()
-                return Response({'detail': 'آیتم حذف شد.'})
-            if quantity > cart_item.product_size.stock:
-                quantity = cart_item.product_size.stock
-            cart_item.quantity = quantity
-            cart_item.save()
+        if quantity is None:
+            return Response({'detail': 'فیلد quantity الزامی است.'}, status=status.HTTP_400_BAD_REQUEST)
 
-        return Response(CartItemSerializer(cart_item).data)
+        try:
+            quantity = int(quantity)
+        except ValueError:
+            return Response({'detail': 'مقدار quantity باید عدد صحیح باشد.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        if quantity <= 0:
+            cart_item.delete()
+            return Response({'detail': 'آیتم حذف شد.'}, status=status.HTTP_200_OK)
+
+        if quantity > cart_item.product_size.stock:
+            quantity = cart_item.product_size.stock
+
+        cart_item.quantity = quantity
+        cart_item.save()
+        return Response(CartItemSerializer(cart_item, context={'request': request}).data,
+                        status=status.HTTP_200_OK)
 
     def delete(self, request, pk):
-        try:
-            cart_item = CartItem.objects.get(pk=pk, user=request.user)
-        except CartItem.DoesNotExist:
+        cart_item = self.get_object(pk, request.user)
+        if not cart_item:
             return Response({'detail': 'آیتم سبد یافت نشد.'}, status=status.HTTP_404_NOT_FOUND)
+
         cart_item.delete()
-        return Response({'detail': 'آیتم حذف شد.'})
+        return Response({'detail': 'آیتم حذف شد.'}, status=status.HTTP_200_OK)
+
+
+# ---------------------- Reviews APIs ----------------------
+class ReviewListCreateView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        reviews = ProductReview.objects.filter(user=request.user)
+        serializer = ProductReviewSerializer(reviews, many=True)
+        return Response(serializer.data)
+
+    def post(self, request):
+        serializer = ProductReviewSerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save(user=request.user)
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+class ReviewUpdateDeleteView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get_object(self, pk, user):
+        try:
+            return ProductReview.objects.get(pk=pk, user=user)
+        except ProductReview.DoesNotExist:
+            return None
+
+    def put(self, request, pk):
+        review = self.get_object(pk, request.user)
+        if not review:
+            return Response({'detail': 'نقد یافت نشد.'}, status=status.HTTP_404_NOT_FOUND)
+
+        serializer = ProductReviewSerializer(review, data=request.data, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    def delete(self, request, pk):
+        review = self.get_object(pk, request.user)
+        if not review:
+            return Response({'detail': 'نقد یافت نشد.'}, status=status.HTTP_404_NOT_FOUND)
+        review.delete()
+        return Response({'detail': 'نقد حذف شد.'}, status=status.HTTP_200_OK)
+
+
+# ---------------------- Favorites APIs ----------------------
+class FavoriteListCreateView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        favorites = Favorite.objects.filter(user=request.user)
+        serializer = FavoriteSerializer(favorites, many=True)
+        return Response(serializer.data)
+
+    def post(self, request):
+        serializer = FavoriteSerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save(user=request.user)
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+class FavoriteDeleteView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get_object(self, pk, user):
+        try:
+            return Favorite.objects.get(pk=pk, user=user)
+        except Favorite.DoesNotExist:
+            return None
+
+    def delete(self, request, pk):
+        favorite = self.get_object(pk, request.user)
+        if not favorite:
+            return Response({'detail': 'آیتم مورد علاقه یافت نشد.'}, status=status.HTTP_404_NOT_FOUND)
+        favorite.delete()
+        return Response({'detail': 'آیتم مورد علاقه حذف شد.'}, status=status.HTTP_200_OK)

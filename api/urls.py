@@ -11,7 +11,11 @@ from .views import (
     VerifyEmailCodeView,
     RegisterWithEmailView,
     CartItemListCreateView,
-    CartItemUpdateDeleteView
+    CartItemUpdateDeleteView,
+    ReviewListCreateView,
+    ReviewUpdateDeleteView,
+    FavoriteListCreateView,
+    FavoriteDeleteView
 )
 
 app_name = "api"  # برای جلوگیری از تداخل نام‌ها در پروژه‌های بزرگ
@@ -37,4 +41,12 @@ urlpatterns = [
     # Cart
     path("cart/", CartItemListCreateView.as_view(), name="cart-list-create"),
     path("cart/<int:pk>/", CartItemUpdateDeleteView.as_view(), name="cart-update-delete"),
+
+    # Reviews
+    path("reviews/", ReviewListCreateView.as_view(), name="review-list-create"),
+    path("reviews/<int:pk>/", ReviewUpdateDeleteView.as_view(), name="review-update-delete"),
+
+    # Favorites
+    path("favorites/", FavoriteListCreateView.as_view(), name="favorite-list-create"),
+    path("favorites/<int:pk>/", FavoriteDeleteView.as_view(), name="favorite-delete"),
 ]

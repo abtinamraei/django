@@ -2,10 +2,11 @@ from rest_framework import serializers
 from django.contrib.auth.models import User
 from .models import (
     Product, Category, EmailVerificationCode,
-    ProductColor, ProductSize, CartItem, ProductImage
+    ProductColor, ProductSize, CartItem, ProductImage,
+    ProductReview, Favorite
 )
 
-# ----- کاربران -----
+# ------------------ کاربران ------------------
 class RegisterSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True, min_length=6)
 
@@ -23,13 +24,13 @@ class RegisterSerializer(serializers.ModelSerializer):
         )
         return user
 
-# ----- دسته‌بندی -----
+# ------------------ دسته‌بندی ------------------
 class CategorySerializer(serializers.ModelSerializer):
     class Meta:
         model = Category
         fields = ['id', 'name']
 
-# ----- سایز و رنگ -----
+# ------------------ سایز و رنگ ------------------
 class ProductSizeSerializer(serializers.ModelSerializer):
     class Meta:
         model = ProductSize
@@ -42,7 +43,7 @@ class ProductColorSerializer(serializers.ModelSerializer):
         model = ProductColor
         fields = ['id', 'name', 'hex_code', 'sizes']
 
-# ----- تصاویر محصول -----
+# ------------------ تصاویر محصول ------------------
 class ProductImageSerializer(serializers.ModelSerializer):
     image_url = serializers.SerializerMethodField()
 
@@ -58,7 +59,33 @@ class ProductImageSerializer(serializers.ModelSerializer):
             return obj.image.url
         return None
 
-# ----- محصول -----
+# ------------------ دیدگاه و امتیاز ------------------
+class ProductReviewSerializer(serializers.ModelSerializer):
+    user_name = serializers.CharField(source='user.username', read_only=True)
+
+    class Meta:
+        model = ProductReview
+        fields = ['id', 'product', 'user', 'user_name', 'rating', 'comment', 'created_at']
+        read_only_fields = ['user', 'created_at']
+
+    def create(self, validated_data):
+        user = self.context['request'].user
+        validated_data['user'] = user
+        return super().create(validated_data)
+
+# ------------------ علاقه‌مندی ------------------
+class FavoriteSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Favorite
+        fields = ['id', 'user', 'product', 'created_at']
+        read_only_fields = ['user', 'created_at']
+
+    def create(self, validated_data):
+        user = self.context['request'].user
+        validated_data['user'] = user
+        return super().create(validated_data)
+
+# ------------------ محصول ------------------
 class ProductSerializer(serializers.ModelSerializer):
     category = CategorySerializer(read_only=True)
     category_id = serializers.PrimaryKeyRelatedField(
@@ -69,12 +96,16 @@ class ProductSerializer(serializers.ModelSerializer):
     colors = ProductColorSerializer(many=True, read_only=True)
     images = ProductImageSerializer(many=True, read_only=True)
     price = serializers.SerializerMethodField()
+    average_rating = serializers.SerializerMethodField()
+    reviews_count = serializers.SerializerMethodField()
+    is_favorite = serializers.SerializerMethodField()
 
     class Meta:
         model = Product
         fields = [
             'id', 'name', 'category', 'category_id', 'price',
-            'description', 'colors', 'images'
+            'description', 'colors', 'images',
+            'average_rating', 'reviews_count', 'is_favorite'
         ]
 
     def get_price(self, obj):
@@ -83,7 +114,23 @@ class ProductSerializer(serializers.ModelSerializer):
             return min(size.price for size in sizes)
         return obj.price
 
-# ----- ایمیل و ثبت‌نام با کد -----
+    def get_average_rating(self, obj):
+        reviews = obj.reviews.all()
+        if reviews.exists():
+            return round(sum(r.rating for r in reviews) / reviews.count(), 1)
+        return None
+
+    def get_reviews_count(self, obj):
+        return obj.reviews.count()
+
+    def get_is_favorite(self, obj):
+        request = self.context.get('request')
+        user = getattr(request, 'user', None)
+        if user and user.is_authenticated:
+            return obj.favorited_by.filter(user=user).exists()
+        return False
+
+# ------------------ ایمیل و ثبت‌نام با کد ------------------
 class EmailSerializer(serializers.Serializer):
     email = serializers.EmailField()
 
@@ -104,7 +151,6 @@ class RegisterWithEmailSerializer(serializers.ModelSerializer):
             evc = EmailVerificationCode.objects.get(email=value)
         except EmailVerificationCode.DoesNotExist:
             raise serializers.ValidationError("ابتدا ایمیل را تایید کنید.")
-
         if evc.is_expired():
             raise serializers.ValidationError("کد تایید ایمیل منقضی شده است.")
         return value
@@ -120,7 +166,7 @@ class RegisterWithEmailSerializer(serializers.ModelSerializer):
         EmailVerificationCode.objects.filter(email=validated_data['email']).delete()
         return user
 
-# ----- سبد خرید -----
+# ------------------ سبد خرید ------------------
 class CartItemSerializer(serializers.ModelSerializer):
     product_name = serializers.CharField(source='product_size.color.product.name', read_only=True)
     color_name = serializers.CharField(source='product_size.color.name', read_only=True)
@@ -131,3 +177,22 @@ class CartItemSerializer(serializers.ModelSerializer):
     class Meta:
         model = CartItem
         fields = ['id', 'product_size', 'quantity', 'product_name', 'color_name', 'size', 'price', 'stock']
+
+    def validate_quantity(self, value):
+        if value <= 0:
+            raise serializers.ValidationError("تعداد باید بزرگتر از صفر باشد.")
+        return value
+
+    def create(self, validated_data):
+        user = self.context['request'].user
+        cart_item, created = CartItem.objects.get_or_create(
+            user=user,
+            product_size=validated_data['product_size'],
+            defaults={'quantity': validated_data.get('quantity', 1)}
+        )
+        if not created:
+            cart_item.quantity += validated_data.get('quantity', 1)
+            if cart_item.quantity > cart_item.product_size.stock:
+                cart_item.quantity = cart_item.product_size.stock
+            cart_item.save()
+        return cart_item
