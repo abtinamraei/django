@@ -4,6 +4,7 @@ import django.core.validators
 import django.db.models.deletion
 from django.conf import settings
 from django.db import migrations, models
+import datetime
 
 
 class Migration(migrations.Migration):
@@ -25,7 +26,10 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='product',
             name='created_at',
-            field=models.DateTimeField(auto_now_add=True, default=2025),
+            field=models.DateTimeField(
+                auto_now_add=True,
+                default=datetime.datetime(2025, 11, 6, 0, 0)
+            ),
             preserve_default=False,
         ),
         migrations.AddField(
@@ -36,7 +40,11 @@ class Migration(migrations.Migration):
         migrations.AlterField(
             model_name='product',
             name='price',
-            field=models.DecimalField(decimal_places=0, help_text='Base price if no sizes', max_digits=10),
+            field=models.DecimalField(
+                decimal_places=0,
+                help_text='Base price if no sizes',
+                max_digits=10
+            ),
         ),
         migrations.CreateModel(
             name='Favorite',
@@ -55,7 +63,10 @@ class Migration(migrations.Migration):
             name='ProductReview',
             fields=[
                 ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('rating', models.PositiveSmallIntegerField(help_text='Rating between 1 and 5', validators=[django.core.validators.MinValueValidator(1), django.core.validators.MaxValueValidator(5)])),
+                ('rating', models.PositiveSmallIntegerField(
+                    help_text='Rating between 1 and 5',
+                    validators=[django.core.validators.MinValueValidator(1), django.core.validators.MaxValueValidator(5)]
+                )),
                 ('comment', models.TextField(blank=True, null=True)),
                 ('is_approved', models.BooleanField(default=True)),
                 ('created_at', models.DateTimeField(auto_now_add=True)),
