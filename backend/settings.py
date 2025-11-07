@@ -7,7 +7,7 @@ SECRET_KEY = 'یک_کلید_امنیتی_قوی_و_تصادفی'
 
 # ⚠️ برای Render و محیط واقعی
 DEBUG = True
-ALLOWED_HOSTS = ['django-rz65.onrender.com', 'localhost','127.0.0.1']  # دامنه واقعی پروژه
+ALLOWED_HOSTS = ['django-rz65.onrender.com', 'localhost', '127.0.0.1']
 
 # --- اپ‌ها ---
 INSTALLED_APPS = [
@@ -29,7 +29,7 @@ MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
-    'corsheaders.middleware.CorsMiddleware',
+    'corsheaders.middleware.CorsMiddleware',  # باید قبل از CommonMiddleware باشه
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
@@ -61,11 +61,11 @@ WSGI_APPLICATION = 'backend.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'froshgah_ehhr',  # نام دیتابیس
-        'USER': 'froshgah_ehhr_user',  # یوزرنیم
-        'PASSWORD': 'aR1XsnBsrumhYjCSohaJmTVJCTR1zhav',  # پسورد
-        'HOST': 'dpg-d3t10todl3ps73b0mt90-a.singapore-postgres.render.com',  # هاست External
-        'PORT': '5432',  # پورت
+        'NAME': 'froshgah_ehhr',
+        'USER': 'froshgah_ehhr_user',
+        'PASSWORD': 'aR1XsnBsrumhYjCSohaJmTVJCTR1zhav',
+        'HOST': 'dpg-d3t10todl3ps73b0mt90-a.singapore-postgres.render.com',
+        'PORT': '5432',
     }
 }
 
@@ -94,7 +94,10 @@ MEDIA_ROOT = BASE_DIR / 'media'
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # --- CORS ---
-CORS_ALLOW_ALL_ORIGINS = True
+CORS_ALLOWED_ORIGINS = [
+    "https://abtin12345678.onrender.com",  # دامنه فرانت‌اند
+]
+CORS_ALLOW_CREDENTIALS = True  # برای ارسال JWT در هدر مشکلی ایجاد نمی‌کنه ولی با کوکی ضروریه
 
 # --- Rest Framework & JWT ---
 REST_FRAMEWORK = {
