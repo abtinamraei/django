@@ -12,8 +12,8 @@ from .views import (
     RegisterWithEmailView,
     CartItemListCreateView,
     CartItemUpdateDeleteView,
-    ReviewListCreateView,
-    ReviewUpdateDeleteView,
+    ProductReviewListCreateView,
+    ProductReviewUpdateDeleteView,
     FavoriteListCreateView,
     FavoriteDeleteView
 )
@@ -42,9 +42,9 @@ urlpatterns = [
     path("cart/", CartItemListCreateView.as_view(), name="cart-list-create"),
     path("cart/<int:pk>/", CartItemUpdateDeleteView.as_view(), name="cart-update-delete"),
 
-    # Reviews
-    path("reviews/", ReviewListCreateView.as_view(), name="review-list-create"),
-    path("reviews/<int:pk>/", ReviewUpdateDeleteView.as_view(), name="review-update-delete"),
+    # Reviews (نظرات محصول)
+    path("products/<int:pk>/reviews/", ProductReviewListCreateView.as_view(), name="product-review-list-create"),
+    path("reviews/<int:pk>/", ProductReviewUpdateDeleteView.as_view(), name="product-review-update-delete"),
 
     # Favorites
     path("favorites/", FavoriteListCreateView.as_view(), name="favorite-list-create"),

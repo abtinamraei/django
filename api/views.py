@@ -225,23 +225,39 @@ class CartItemUpdateDeleteView(APIView):
 
 
 # ---------------------- Reviews APIs ----------------------
-class ReviewListCreateView(APIView):
+class ProductReviewListCreateView(APIView):
     permission_classes = [IsAuthenticated]
 
-    def get(self, request):
-        reviews = ProductReview.objects.filter(user=request.user)
-        serializer = ProductReviewSerializer(reviews, many=True)
-        return Response(serializer.data)
+    def get(self, request, pk):
+        """
+        واکشی تمام نظرات محصول با شناسه pk
+        """
+        try:
+            product = Product.objects.get(pk=pk)
+        except Product.DoesNotExist:
+            return Response({'detail': 'محصول یافت نشد.'}, status=status.HTTP_404_NOT_FOUND)
 
-    def post(self, request):
+        reviews = ProductReview.objects.filter(product=product).order_by('-created_at')
+        serializer = ProductReviewSerializer(reviews, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+    def post(self, request, pk):
+        """
+        ثبت نظر جدید برای محصول با شناسه pk
+        """
+        try:
+            product = Product.objects.get(pk=pk)
+        except Product.DoesNotExist:
+            return Response({'detail': 'محصول یافت نشد.'}, status=status.HTTP_404_NOT_FOUND)
+
         serializer = ProductReviewSerializer(data=request.data)
         if serializer.is_valid():
-            serializer.save(user=request.user)
+            serializer.save(user=request.user, product=product)
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
-class ReviewUpdateDeleteView(APIView):
+class ProductReviewUpdateDeleteView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get_object(self, pk, user):
