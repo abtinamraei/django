@@ -52,7 +52,7 @@ class ProductImageSerializer(serializers.ModelSerializer):
         fields = ['id', 'image', 'image_url', 'order']
 
     def get_image_url(self, obj):
-        request = self.context.get('request')
+        request = self.context.get('request') if hasattr(self, 'context') else None
         if obj.image and hasattr(obj.image, 'url'):
             if request:
                 return request.build_absolute_uri(obj.image.url)
@@ -69,8 +69,9 @@ class ProductReviewSerializer(serializers.ModelSerializer):
         read_only_fields = ['user', 'created_at']
 
     def create(self, validated_data):
-        user = self.context['request'].user
-        validated_data['user'] = user
+        request = self.context.get('request') if hasattr(self, 'context') else None
+        if request and hasattr(request, 'user'):
+            validated_data['user'] = request.user
         return super().create(validated_data)
 
 # ------------------ علاقه‌مندی ------------------
@@ -81,8 +82,9 @@ class FavoriteSerializer(serializers.ModelSerializer):
         read_only_fields = ['user', 'created_at']
 
     def create(self, validated_data):
-        user = self.context['request'].user
-        validated_data['user'] = user
+        request = self.context.get('request') if hasattr(self, 'context') else None
+        if request and hasattr(request, 'user'):
+            validated_data['user'] = request.user
         return super().create(validated_data)
 
 # ------------------ محصول ------------------
@@ -124,8 +126,8 @@ class ProductSerializer(serializers.ModelSerializer):
         return obj.reviews.count()
 
     def get_is_favorite(self, obj):
-        request = self.context.get('request')
-        user = getattr(request, 'user', None)
+        request = self.context.get('request') if hasattr(self, 'context') else None
+        user = getattr(request, 'user', None) if request else None
         if user and user.is_authenticated:
             return obj.favorited_by.filter(user=user).exists()
         return False
@@ -184,7 +186,12 @@ class CartItemSerializer(serializers.ModelSerializer):
         return value
 
     def create(self, validated_data):
-        user = self.context['request'].user
+        request = self.context.get('request') if hasattr(self, 'context') else None
+        user = request.user if request and hasattr(request, 'user') else None
+
+        if not user:
+            raise serializers.ValidationError("کاربر مشخص نیست.")
+
         cart_item, created = CartItem.objects.get_or_create(
             user=user,
             product_size=validated_data['product_size'],
