@@ -1,15 +1,13 @@
+# settings.py (اصلاح شده)
 from pathlib import Path
 from datetime import timedelta
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 SECRET_KEY = 'یک_کلید_امنیتی_قوی_و_تصادفی'
-
-# ⚠️ برای Render و محیط واقعی
 DEBUG = True
 ALLOWED_HOSTS = ['django-rz65.onrender.com', 'localhost', '127.0.0.1']
 
-# --- اپ‌ها ---
 INSTALLED_APPS = [
     'django.contrib.admin',
     'django.contrib.auth',
@@ -24,12 +22,11 @@ INSTALLED_APPS = [
     'api',  # اپ شما
 ]
 
-# --- میدلورها ---
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
-    'corsheaders.middleware.CorsMiddleware',  # باید قبل از CommonMiddleware باشه
+    'corsheaders.middleware.CorsMiddleware',  # قبل از CommonMiddleware
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
@@ -57,7 +54,6 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'backend.wsgi.application'
 
-# --- دیتابیس PostgreSQL Render (External) ---
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
@@ -69,7 +65,6 @@ DATABASES = {
     }
 }
 
-# --- پسوردها ---
 AUTH_PASSWORD_VALIDATORS = [
     {'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator'},
     {'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator'},
@@ -77,13 +72,11 @@ AUTH_PASSWORD_VALIDATORS = [
     {'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator'},
 ]
 
-# --- زبان و زمان ---
 LANGUAGE_CODE = 'en-us'
 TIME_ZONE = 'Asia/Tehran'
 USE_I18N = True
 USE_TZ = True
 
-# --- استاتیک و مدیا ---
 STATIC_URL = '/static/'
 STATIC_ROOT = BASE_DIR / 'staticfiles'
 STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
@@ -96,11 +89,13 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 # --- CORS ---
 CORS_ALLOWED_ORIGINS = [
     "https://abtin12345678.onrender.com",
-      "http://127.0.0.1:8000",  # دامنه فرانت‌اند
+    "http://127.0.0.1:3000",
 ]
-CORS_ALLOW_CREDENTIALS = False  # برای ارسال JWT در هدر مشکلی ایجاد نمی‌کنه ولی با کوکی ضروریه
+CORS_ALLOW_CREDENTIALS = True
+CORS_ALLOW_ALL_METHODS = True
+CORS_ALLOW_HEADERS = ['*']
 
-# --- Rest Framework & JWT ---
+# --- REST Framework & JWT ---
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
         'rest_framework_simplejwt.authentication.JWTAuthentication',
@@ -116,11 +111,11 @@ SIMPLE_JWT = {
     'AUTH_HEADER_TYPES': ('Bearer',),
 }
 
-# --- تنظیم ایمیل ---
+# --- ایمیل ---
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 EMAIL_HOST = 'smtp.gmail.com'
 EMAIL_USE_TLS = True
 EMAIL_PORT = 587
-EMAIL_HOST_USER = 'abtin.amraei@gmail.com'          # ایمیل خودت
-EMAIL_HOST_PASSWORD = 'pnjn mcbt tpps zlmc'         # پسورد اپلیکیشن جیمیل
+EMAIL_HOST_USER = 'abtin.amraei@gmail.com'
+EMAIL_HOST_PASSWORD = 'pnjn mcbt tpps zlmc'
 DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
