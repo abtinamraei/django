@@ -213,7 +213,7 @@ class ProductReviewListCreateView(APIView):
     """
     لیست و ثبت نظر برای یک محصول
     - کاربران ثبت‌نام‌شده: فقط یک نظر، اگر دوباره ثبت کنند، آپدیت می‌شود
-    - ناشناس‌ها: چند نظر می‌توانند ثبت کنند
+    - کاربران ناشناس: می‌توانند چند نظر ثبت کنند
     """
     permission_classes = [IsAuthenticatedOrReadOnly]
 
@@ -222,7 +222,7 @@ class ProductReviewListCreateView(APIView):
             product = Product.objects.get(pk=pk)
         except Product.DoesNotExist:
             return Response({'detail': 'محصول یافت نشد.'}, status=status.HTTP_404_NOT_FOUND)
-        
+
         reviews = ProductReview.objects.filter(product=product).order_by('-created_at')
         serializer = ProductReviewSerializer(reviews, many=True, context={'request': request})
         return Response(serializer.data, status=status.HTTP_200_OK)
@@ -232,12 +232,32 @@ class ProductReviewListCreateView(APIView):
             product = Product.objects.get(pk=pk)
         except Product.DoesNotExist:
             return Response({'detail': 'محصول یافت نشد.'}, status=status.HTTP_404_NOT_FOUND)
-        
-        serializer = ProductReviewSerializer(data=request.data, context={'request': request})
-        if serializer.is_valid():
-            serializer.save(product=product)
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        user = request.user if request.user.is_authenticated else None
+        data = request.data.copy()
+
+        if user:
+            # کاربران ثبت‌نام‌شده محدود به یک نظر هستند
+            obj, created = ProductReview.objects.update_or_create(
+                product=product,
+                user=user,
+                defaults={
+                    'rating': data.get('rating'),
+                    'comment': data.get('comment', '')
+                }
+            )
+            serializer = ProductReviewSerializer(obj, context={'request': request})
+            return Response(
+                serializer.data,
+                status=status.HTTP_201_CREATED if created else status.HTTP_200_OK
+            )
+        else:
+            # کاربران ناشناس می‌توانند چند نظر ثبت کنند
+            serializer = ProductReviewSerializer(data=data, context={'request': request})
+            if serializer.is_valid():
+                serializer.save(product=product)
+                return Response(serializer.data, status=status.HTTP_201_CREATED)
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
 class ProductReviewUpdateDeleteView(APIView):
@@ -256,7 +276,7 @@ class ProductReviewUpdateDeleteView(APIView):
         review = self.get_object(pk, request.user)
         if not review:
             return Response({'detail': 'نظر یافت نشد.'}, status=status.HTTP_404_NOT_FOUND)
-        
+
         serializer = ProductReviewSerializer(review, data=request.data, partial=True, context={'request': request})
         if serializer.is_valid():
             serializer.save()
