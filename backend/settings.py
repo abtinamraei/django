@@ -1,5 +1,4 @@
 from pathlib import Path
-from datetime import timedelta
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -7,7 +6,7 @@ SECRET_KEY = 'یک_کلید_امنیتی_قوی_و_تصادفی'
 
 # ⚠️ برای Render و محیط واقعی
 DEBUG = True
-ALLOWED_HOSTS = ['django-rz65.onrender.com', 'localhost','127.0.0.1']  # دامنه واقعی پروژه
+ALLOWED_HOSTS = ['django-rz65.onrender.com', 'localhost','127.0.0.1']
 
 # --- اپ‌ها ---
 INSTALLED_APPS = [
@@ -20,7 +19,6 @@ INSTALLED_APPS = [
 
     'corsheaders',
     'rest_framework',
-    'rest_framework_simplejwt',
     'api',  # اپ شما
 ]
 
@@ -31,7 +29,7 @@ MIDDLEWARE = [
     'django.contrib.sessions.middleware.SessionMiddleware',
     'corsheaders.middleware.CorsMiddleware',
     'django.middleware.common.CommonMiddleware',
-    'django.middleware.csrf.CsrfViewMiddleware',
+    'django.middleware.csrf.CsrfViewMiddleware',  # CSRF فعال
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
@@ -61,11 +59,11 @@ WSGI_APPLICATION = 'backend.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'froshgah_ehhr',  # نام دیتابیس
-        'USER': 'froshgah_ehhr_user',  # یوزرنیم
-        'PASSWORD': 'aR1XsnBsrumhYjCSohaJmTVJCTR1zhav',  # پسورد
-        'HOST': 'dpg-d3t10todl3ps73b0mt90-a.singapore-postgres.render.com',  # هاست External
-        'PORT': '5432',  # پورت
+        'NAME': 'froshgah_ehhr',
+        'USER': 'froshgah_ehhr_user',
+        'PASSWORD': 'aR1XsnBsrumhYjCSohaJmTVJCTR1zhav',
+        'HOST': 'dpg-d3t10todl3ps73b0mt90-a.singapore-postgres.render.com',
+        'PORT': '5432',
     }
 }
 
@@ -94,22 +92,20 @@ MEDIA_ROOT = BASE_DIR / 'media'
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # --- CORS ---
-CORS_ALLOW_ALL_ORIGINS = True
+CORS_ALLOWED_ORIGINS = [
+    'http://localhost:3000',  # فرانت لوکال
+    'https://shop-site.example.com',  # دامنه فرانت اصلی
+]
+CORS_ALLOW_CREDENTIALS = True  # اجازه ارسال کوکی با درخواست‌ها
 
-# --- Rest Framework & JWT ---
+# --- Rest Framework ---
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
-        'rest_framework_simplejwt.authentication.JWTAuthentication',
+        'rest_framework.authentication.SessionAuthentication',  # Session به جای JWT
     ),
     'DEFAULT_PERMISSION_CLASSES': (
-        'rest_framework.permissions.IsAuthenticated',
+        'rest_framework.permissions.IsAuthenticated',  # اجازه دسترسی فقط به کاربران وارد شده
     ),
-}
-
-SIMPLE_JWT = {
-    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=60),
-    'REFRESH_TOKEN_LIFETIME': timedelta(days=1),
-    'AUTH_HEADER_TYPES': ('Bearer',),
 }
 
 # --- تنظیم ایمیل ---
@@ -117,6 +113,19 @@ EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 EMAIL_HOST = 'smtp.gmail.com'
 EMAIL_USE_TLS = True
 EMAIL_PORT = 587
-EMAIL_HOST_USER = 'abtin.amraei@gmail.com'          # ایمیل خودت
-EMAIL_HOST_PASSWORD = 'pnjn mcbt tpps zlmc'         # پسورد اپلیکیشن جیمیل
+EMAIL_HOST_USER = 'abtin.amraei@gmail.com'
+EMAIL_HOST_PASSWORD = 'pnjn mcbt tpps zlmc'
 DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
+
+# --- CSRF ---
+CSRF_COOKIE_NAME = "csrftoken"
+CSRF_COOKIE_HTTPONLY = False  # JS می‌تونه کوکی بخونه (برای fetch)
+CSRF_TRUSTED_ORIGINS = [
+    'http://localhost:3000',
+    'https://shop-site.example.com',
+]
+
+# --- SESSION ---
+SESSION_COOKIE_HTTPONLY = True
+SESSION_COOKIE_SECURE = False  # اگر روی HTTPS واقعی: True
+SESSION_COOKIE_SAMESITE = 'Lax'  # جلوگیری از CSRF Cross-site

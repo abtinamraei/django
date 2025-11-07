@@ -1,8 +1,6 @@
 import random
 from django.core.mail import send_mail
 from django.conf import settings
-from django.views.decorators.csrf import csrf_exempt
-from django.utils.decorators import method_decorator
 from django.db.models import Q
 from rest_framework import generics, status, permissions
 from rest_framework.response import Response
@@ -20,10 +18,10 @@ from .serializers import (
     ProductReviewSerializer, FavoriteSerializer
 )
 
+
 # ---------------------- Auth APIs ----------------------
-@method_decorator(csrf_exempt, name='dispatch')
 class SendEmailVerificationCodeView(APIView):
-    permission_classes = []
+    permission_classes = [permissions.AllowAny]
 
     def post(self, request):
         serializer = EmailSerializer(data=request.data)
@@ -45,9 +43,8 @@ class SendEmailVerificationCodeView(APIView):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
-@method_decorator(csrf_exempt, name='dispatch')
 class VerifyEmailCodeView(APIView):
-    permission_classes = []
+    permission_classes = [permissions.AllowAny]
 
     def post(self, request):
         serializer = VerifyEmailCodeSerializer(data=request.data)
@@ -66,16 +63,14 @@ class VerifyEmailCodeView(APIView):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
-@method_decorator(csrf_exempt, name='dispatch')
 class RegisterWithEmailView(CreateAPIView):
     serializer_class = RegisterWithEmailSerializer
-    permission_classes = []
+    permission_classes = [permissions.AllowAny]
 
 
-@method_decorator(csrf_exempt, name='dispatch')
 class RegisterView(CreateAPIView):
     serializer_class = RegisterSerializer
-    permission_classes = []
+    permission_classes = [permissions.AllowAny]
 
 
 # ---------------------- Category & Product APIs ----------------------
@@ -126,7 +121,6 @@ class UserProfileView(APIView):
         }, status=status.HTTP_200_OK)
 
 
-@method_decorator(csrf_exempt, name='dispatch')
 class ChangePasswordView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -210,11 +204,6 @@ class CartItemUpdateDeleteView(APIView):
 
 # ---------------------- Reviews APIs ----------------------
 class ProductReviewListCreateView(APIView):
-    """
-    لیست و ثبت نظر برای یک محصول
-    - کاربران ثبت‌نام‌شده: فقط یک نظر، اگر دوباره ثبت کنند، آپدیت می‌شود
-    - کاربران ناشناس: می‌توانند چند نظر ثبت کنند
-    """
     permission_classes = [IsAuthenticatedOrReadOnly]
 
     def get(self, request, pk):
@@ -237,7 +226,6 @@ class ProductReviewListCreateView(APIView):
         data = request.data.copy()
 
         if user:
-            # کاربران ثبت‌نام‌شده محدود به یک نظر هستند
             obj, created = ProductReview.objects.update_or_create(
                 product=product,
                 user=user,
@@ -252,7 +240,6 @@ class ProductReviewListCreateView(APIView):
                 status=status.HTTP_201_CREATED if created else status.HTTP_200_OK
             )
         else:
-            # کاربران ناشناس می‌توانند چند نظر ثبت کنند
             serializer = ProductReviewSerializer(data=data, context={'request': request})
             if serializer.is_valid():
                 serializer.save(product=product)
@@ -261,9 +248,6 @@ class ProductReviewListCreateView(APIView):
 
 
 class ProductReviewUpdateDeleteView(APIView):
-    """
-    ویرایش و حذف نظر توسط کاربر
-    """
     permission_classes = [IsAuthenticated]
 
     def get_object(self, pk, user):
