@@ -95,9 +95,10 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # --- CORS ---
 CORS_ALLOWED_ORIGINS = [
-    "https://abtin12345678.onrender.com",  # دامنه فرانت‌اند
+    "https://abtin12345678.onrender.com",
+      "http://127.0.0.1:8000",  # دامنه فرانت‌اند
 ]
-CORS_ALLOW_CREDENTIALS = True  # برای ارسال JWT در هدر مشکلی ایجاد نمی‌کنه ولی با کوکی ضروریه
+CORS_ALLOW_CREDENTIALS = False  # برای ارسال JWT در هدر مشکلی ایجاد نمی‌کنه ولی با کوکی ضروریه
 
 # --- Rest Framework & JWT ---
 REST_FRAMEWORK = {
