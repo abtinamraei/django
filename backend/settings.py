@@ -7,7 +7,7 @@ SECRET_KEY = 'یک_کلید_امنیتی_قوی_و_تصادفی'
 
 # ⚠️ برای Render و محیط واقعی
 DEBUG = True
-ALLOWED_HOSTS = ['django-rz65.onrender.com', 'localhost']  # دامنه واقعی پروژه
+ALLOWED_HOSTS = ['django-rz65.onrender.com', 'localhost','127.0.0.1']  # دامنه واقعی پروژه
 
 # --- اپ‌ها ---
 INSTALLED_APPS = [
