@@ -187,10 +187,18 @@ class ProductAdmin(admin.ModelAdmin):
     main_image_preview.short_description = '🖼️ تصویر'
     
     def price_range(self, obj):
+        """نمایش محدوده قیمت محصول"""
         min_p = obj.min_price
         if min_p != obj.price:
-            return format_html('<span style="color: #28a745; font-weight: bold;">{:,.0f}</span> - <span style="color: #6c757d;">{:,.0f}</span> تومان', min_p, obj.price)
-        return format_html('<span style="color: #28a745; font-weight: bold;">{:,.0f}</span> تومان', obj.price)
+            return format_html(
+                '<span style="color: #28a745; font-weight: bold;">{}</span> - <span style="color: #6c757d;">{}</span> تومان',
+                f'{min_p:,.0f}',
+                f'{obj.price:,.0f}'
+            )
+        return format_html(
+            '<span style="color: #28a745; font-weight: bold;">{}</span> تومان',
+            f'{obj.price:,.0f}'
+        )
     price_range.short_description = '💰 قیمت'
     
     def stock_status_full(self, obj):
@@ -405,7 +413,10 @@ class ProductSizeAdmin(admin.ModelAdmin):
     color_name_link.short_description = '🎨 رنگ'
     
     def price_formatted(self, obj):
-        return format_html('<span style="direction: ltr; display: inline-block; font-family: monospace; font-weight: bold; color: #28a45;">{:,.0f}</span> تومان', obj.price)
+        return format_html(
+            '<span style="direction: ltr; display: inline-block; font-family: monospace; font-weight: bold; color: #28a745;">{}</span> تومان',
+            f'{obj.price:,.0f}'
+        )
     price_formatted.short_description = '💰 قیمت'
     
     def sku_short(self, obj):
@@ -573,15 +584,24 @@ class CartItemAdmin(admin.ModelAdmin):
     quantity_badge.short_description = '🔢 تعداد'
     
     def unit_price(self, obj):
-        return format_html('<span style="font-family: monospace;">{:,.0f}</span> تومان', obj.product_size.price)
+        return format_html(
+            '<span style="font-family: monospace;">{}</span> تومان',
+            f'{obj.product_size.price:,.0f}'
+        )
     unit_price.short_description = '💰 قیمت واحد'
     
     def total_price(self, obj):
-        return format_html('<span style="font-family: monospace; font-weight: bold; color: #28a745;">{:,.0f}</span> تومان', obj.total_price)
+        return format_html(
+            '<span style="font-family: monospace; font-weight: bold; color: #28a745;">{}</span> تومان',
+            f'{obj.total_price:,.0f}'
+        )
     total_price.short_description = '💵 قیمت کل'
     
     def total_price_display(self, obj):
-        return format_html('<span style="font-size: 16px; font-weight: bold; color: #28a745;">{:,.0f} تومان</span>', obj.total_price)
+        return format_html(
+            '<span style="font-size: 16px; font-weight: bold; color: #28a745;">{} تومان</span>',
+            f'{obj.total_price:,.0f}'
+        )
     total_price_display.short_description = '💵 قیمت کل'
     
     def created_at_short(self, obj):
@@ -650,7 +670,10 @@ class ProductReviewAdmin(admin.ModelAdmin):
         if obj.rating is None:
             return format_html('<span style="color: #999;">بدون امتیاز</span>')
         stars = '★' * obj.rating + '☆' * (5 - obj.rating)
-        return format_html('<span style="color: #ffc107; font-size: 24px;">{}</span><br><span style="color: #6c757d;">{} از 5</span>', stars, obj.rating)
+        return format_html(
+            '<span style="color: #ffc107; font-size: 24px;">{}</span><br><span style="color: #6c757d;">{} از 5</span>',
+            stars, obj.rating
+        )
     rating_stars_large.short_description = '⭐ امتیاز'
     
     def comment_short(self, obj):
@@ -798,7 +821,10 @@ class CouponAdmin(admin.ModelAdmin):
     
     def usage_stats(self, obj):
         percentage = (obj.used_count / obj.max_uses) * 100 if obj.max_uses > 0 else 0
-        return format_html('<span style="font-weight: bold;">{}/{}</span><br><div style="width: 80px; background: #e9ecef; border-radius: 10px; overflow: hidden; margin-top: 5px;"><div style="width: {}%; background: {}; height: 4px;"></div></div>', obj.used_count, obj.max_uses, percentage, '#28a745' if percentage < 80 else '#dc3545')
+        return format_html(
+            '<span style="font-weight: bold;">{}/{}</span><br><div style="width: 80px; background: #e9ecef; border-radius: 10px; overflow: hidden; margin-top: 5px;"><div style="width: {}%; background: {}; height: 4px;"></div></div>',
+            obj.used_count, obj.max_uses, percentage, '#28a745' if percentage < 80 else '#dc3545'
+        )
     usage_stats.short_description = '📊 مصرف'
     
     def status_badge(self, obj):
