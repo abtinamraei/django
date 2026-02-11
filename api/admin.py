@@ -476,7 +476,7 @@ class ProductSizeAdmin(admin.ModelAdmin):
         css = {
             'all': ('admin/css/custom.css',)
         }
-        js = ('admin/js/product_size_actions.js',)
+        js = ('admin/js/product_size_actions.js',)              
 # ---------------------- ProductImage Admin ----------------------
 @admin.register(ProductImage)
 class ProductImageAdmin(admin.ModelAdmin):

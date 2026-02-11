@@ -57,10 +57,10 @@ WSGI_APPLICATION = 'backend.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'database_el65',
-        'USER': 'database_el65_user',
-        'PASSWORD': 'CTfjvHRMcWdpp9mkEgxz0YiVPyTLkhqI',
-        'HOST': 'dpg-d66angf5r7bs73cfb6pg-a.singapore-postgres.render.com',
+        'NAME': 'database_bv6i',
+        'USER': 'database_bv6i_user',
+        'PASSWORD': 'XyT54NOWgFuhTvqFtMdSyOI5UZRwWbru',
+        'HOST': 'dpg-d66daejh46gs739pif5g-a.singapore-postgres.render.com',
         'PORT': '5432',
     }
 }
