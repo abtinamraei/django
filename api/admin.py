@@ -70,7 +70,9 @@ class ProductSizeInline(admin.TabularInline):
     is_available_display.short_description = 'وضعیت'
     
     def created_at_short(self, obj):
-        return obj.created_at.strftime('%Y/%m/%d')
+        if obj.created_at:
+            return obj.created_at.strftime('%Y/%m/%d')
+        return '-'
     created_at_short.short_description = 'تاریخ'
 
 
@@ -140,7 +142,7 @@ class ProductImageInline(admin.TabularInline):
 @admin.register(Product)
 class ProductAdmin(admin.ModelAdmin):
     list_display = ['name', 'category', 'main_image_preview', 'price_range', 
-                    'stock_status_full', 'rating_display', 'is_active', 'is_featured', 'status_badges', 'created_at_jalali']  # ✅ is_active و is_featured اضافه شد
+                    'stock_status_full', 'rating_display', 'is_active', 'is_featured', 'status_badges', 'created_at_jalali']
     list_filter = ['category', 'is_active', 'is_featured', 'created_at']
     search_fields = ['name', 'description', 'meta_keywords']
     inlines = [ProductColorInline, ProductImageInline]
@@ -148,7 +150,7 @@ class ProductAdmin(admin.ModelAdmin):
     save_on_top = True
     list_per_page = 25
     date_hierarchy = 'created_at'
-    list_editable = ['is_active', 'is_featured']  # ✅ حالا درسته چون تو list_display هستن
+    list_editable = ['is_active', 'is_featured']
     
     fieldsets = (
         ('📌 اطلاعات اصلی', {
@@ -178,7 +180,6 @@ class ProductAdmin(admin.ModelAdmin):
                       'main_image_preview', 'view_count', 'sold_count', 'price_range', 
                       'stock_status_full', 'rating_display', 'status_badges']
     
-    # ... بقیه متدها همونطور هستن ...
     def main_image_preview(self, obj):
         if obj.main_image:
             return format_html('<img src="{}" style="width: 50px; height: 50px; object-fit: cover; border-radius: 8px; border: 1px solid #dee2e6;" />', obj.main_image.url)
@@ -240,7 +241,9 @@ class ProductAdmin(admin.ModelAdmin):
     status_badges.short_description = '🏷️ برچسب‌ها'
     
     def created_at_jalali(self, obj):
-        return obj.created_at.strftime('%Y/%m/%d - %H:%M')
+        if obj.created_at:
+            return obj.created_at.strftime('%Y/%m/%d - %H:%M')
+        return '-'
     created_at_jalali.short_description = '📅 تاریخ ثبت'
     
     actions = ['duplicate_product', 'toggle_active', 'toggle_featured', 'bulk_discount']
@@ -351,7 +354,9 @@ class ProductColorAdmin(admin.ModelAdmin):
     total_stock_detailed.short_description = '📦 جزئیات موجودی'
     
     def updated_at_short(self, obj):
-        return obj.updated_at.strftime('%Y/%m/%d')
+        if obj.updated_at:
+            return obj.updated_at.strftime('%Y/%m/%d')
+        return '-'
     updated_at_short.short_description = '📅 آخرین بروزرسانی'
 
 
@@ -359,11 +364,11 @@ class ProductColorAdmin(admin.ModelAdmin):
 @admin.register(ProductSize)
 class ProductSizeAdmin(admin.ModelAdmin):
     list_display = ['product_name_link', 'color_name_link', 'size', 'price', 'price_formatted', 
-                    'stock', 'sku_short', 'status_with_badge', 'updated_at_short']  # ✅ price و stock اضافه شدن
+                    'stock', 'sku_short', 'status_with_badge', 'updated_at_short']
     list_filter = ['color__product', 'color__name', 'size', 'color__product__category']
     search_fields = ['color__product__name', 'color__name', 'size', 'sku']
     ordering = ['color__product', 'color__name', 'size']
-    list_editable = ['price', 'stock']  # ✅ حالا درسته
+    list_editable = ['price', 'stock']
     list_per_page = 50
     save_on_top = True
     
@@ -423,7 +428,9 @@ class ProductSizeAdmin(admin.ModelAdmin):
     status_with_badge.short_description = '⚡ وضعیت'
     
     def updated_at_short(self, obj):
-        return obj.updated_at.strftime('%Y/%m/%d')
+        if obj.updated_at:
+            return obj.updated_at.strftime('%Y/%m/%d')
+        return '-'
     updated_at_short.short_description = '📅 بروزرسانی'
     
     actions = ['increase_stock', 'decrease_stock', 'apply_discount', 'set_sku']
@@ -515,7 +522,9 @@ class ProductImageAdmin(admin.ModelAdmin):
     image_preview_large.short_description = '👁️ پیش‌نمایش بزرگ'
     
     def created_at_short(self, obj):
-        return obj.created_at.strftime('%Y/%m/%d')
+        if obj.created_at:
+            return obj.created_at.strftime('%Y/%m/%d')
+        return '-'
     created_at_short.short_description = '📅 تاریخ'
 
 
@@ -576,7 +585,9 @@ class CartItemAdmin(admin.ModelAdmin):
     total_price_display.short_description = '💵 قیمت کل'
     
     def created_at_short(self, obj):
-        return obj.created_at.strftime('%Y/%m/%d')
+        if obj.created_at:
+            return obj.created_at.strftime('%Y/%m/%d')
+        return '-'
     created_at_short.short_description = '📅 تاریخ'
     
     def save_model(self, request, obj, form, change):
@@ -595,13 +606,13 @@ class CartItemAdmin(admin.ModelAdmin):
 @admin.register(ProductReview)
 class ProductReviewAdmin(admin.ModelAdmin):
     list_display = ['product_link', 'user_link', 'rating_stars', 'comment_short', 
-                    'helpful_badge', 'is_approved', 'approval_status', 'created_at_short']  # ✅ is_approved اضافه شد
+                    'helpful_badge', 'is_approved', 'approval_status', 'created_at_short']
     list_filter = ['is_approved', 'rating', 'created_at']
     search_fields = ['product__name', 'user__username', 'comment']
     ordering = ['-created_at']
     list_per_page = 50
     date_hierarchy = 'created_at'
-    list_editable = ['is_approved']  # ✅ حالا درسته
+    list_editable = ['is_approved']
     
     fieldsets = (
         ('📝 اطلاعات نظر', {
@@ -629,11 +640,15 @@ class ProductReviewAdmin(admin.ModelAdmin):
     user_link.short_description = '👤 کاربر'
     
     def rating_stars(self, obj):
+        if obj.rating is None:
+            return format_html('<span style="color: #999;">بدون امتیاز</span>')
         stars = '★' * obj.rating + '☆' * (5 - obj.rating)
         return format_html('<span style="color: #ffc107; font-size: 16px;">{}</span>', stars)
     rating_stars.short_description = '⭐ امتیاز'
     
     def rating_stars_large(self, obj):
+        if obj.rating is None:
+            return format_html('<span style="color: #999;">بدون امتیاز</span>')
         stars = '★' * obj.rating + '☆' * (5 - obj.rating)
         return format_html('<span style="color: #ffc107; font-size: 24px;">{}</span><br><span style="color: #6c757d;">{} از 5</span>', stars, obj.rating)
     rating_stars_large.short_description = '⭐ امتیاز'
@@ -649,7 +664,7 @@ class ProductReviewAdmin(admin.ModelAdmin):
             return format_html('<span style="background: #28a745; color: white; padding: 2px 8px; border-radius: 12px;">{} مفید</span>', obj.helpful_count)
         elif obj.helpful_count > 5:
             return format_html('<span style="background: #17a2b8; color: white; padding: 2px 8px; border-radius: 12px;">{} مفید</span>', obj.helpful_count)
-        return str(obj.helpful_count)
+        return str(obj.helpful_count) if obj.helpful_count else '0'
     helpful_badge.short_description = '👍 مفید'
     
     def approval_status(self, obj):
@@ -659,7 +674,9 @@ class ProductReviewAdmin(admin.ModelAdmin):
     approval_status.short_description = '⚡ وضعیت'
     
     def created_at_short(self, obj):
-        return obj.created_at.strftime('%Y/%m/%d')
+        if obj.created_at:
+            return obj.created_at.strftime('%Y/%m/%d')
+        return '-'
     created_at_short.short_description = '📅 تاریخ'
     
     actions = ['approve_reviews', 'unapprove_reviews', 'delete_reviews']
@@ -723,7 +740,9 @@ class FavoriteAdmin(admin.ModelAdmin):
     favorite_since.short_description = '⏳ زمان افزودن'
     
     def created_at_short(self, obj):
-        return obj.created_at.strftime('%Y/%m/%d')
+        if obj.created_at:
+            return obj.created_at.strftime('%Y/%m/%d')
+        return '-'
     created_at_short.short_description = '📅 تاریخ'
     
     actions = ['remove_from_favorites']
@@ -739,12 +758,12 @@ class FavoriteAdmin(admin.ModelAdmin):
 @admin.register(Coupon)
 class CouponAdmin(admin.ModelAdmin):
     list_display = ['code', 'discount_display', 'valid_period', 'usage_stats', 
-                   'status_badge', 'is_active', 'created_at_short']  # ✅ is_active اضافه شد
+                   'status_badge', 'is_active', 'created_at_short']
     list_filter = ['is_active', 'valid_from', 'valid_to']
     search_fields = ['code']
     ordering = ['-created_at']
     list_per_page = 25
-    list_editable = ['is_active']  # ✅ حالا درسته
+    list_editable = ['is_active']
     
     fieldsets = (
         ('🏷️ اطلاعات کوپن', {
@@ -797,7 +816,9 @@ class CouponAdmin(admin.ModelAdmin):
     is_valid_display.short_description = '🔍 بررسی اعتبار'
     
     def created_at_short(self, obj):
-        return obj.created_at.strftime('%Y/%m/%d')
+        if obj.created_at:
+            return obj.created_at.strftime('%Y/%m/%d')
+        return '-'
     created_at_short.short_description = '📅 تاریخ ایجاد'
     
     actions = ['activate_coupons', 'deactivate_coupons', 'reset_usage']
@@ -821,13 +842,13 @@ class CouponAdmin(admin.ModelAdmin):
 # ---------------------- Email Verification Code Admin ----------------------
 @admin.register(EmailVerificationCode)
 class EmailVerificationCodeAdmin(admin.ModelAdmin):
-    list_display = ['email', 'code', 'usage_status', 'expiry_status', 'is_used', 'created_at_short']  # ✅ is_used اضافه شد
+    list_display = ['email', 'code', 'usage_status', 'expiry_status', 'is_used', 'created_at_short']
     list_filter = ['is_used', 'created_at']
     search_fields = ['email', 'code']
     ordering = ['-created_at']
     list_per_page = 50
     date_hierarchy = 'created_at'
-    list_editable = ['is_used']  # ✅ حالا درسته
+    list_editable = ['is_used']
     
     fieldsets = (
         ('📧 اطلاعات ایمیل', {
@@ -847,6 +868,8 @@ class EmailVerificationCodeAdmin(admin.ModelAdmin):
     usage_status.short_description = '📌 وضعیت مصرف'
     
     def expiry_status(self, obj):
+        if obj.created_at is None:
+            return format_html('<span style="color: #ffc107; font-weight: bold;">⚠️ تاریخ نامشخص</span>')
         if obj.is_expired():
             return format_html('<span style="color: #dc3545; font-weight: bold;">❌ منقضی شده</span>')
         remaining = max(0, (obj.created_at + timedelta(minutes=10) - timezone.now()).seconds // 60)
@@ -854,14 +877,27 @@ class EmailVerificationCodeAdmin(admin.ModelAdmin):
     expiry_status.short_description = '⏳ انقضا'
     
     def expiry_status_display(self, obj):
+        if obj.created_at is None:
+            return format_html('<span style="color: #ffc107; font-size: 16px;">⚠️ تاریخ ایجاد کد نامشخص است</span>')
+        
+        expiration_time = obj.created_at + timedelta(minutes=10)
+        
         if obj.is_expired():
-            return format_html('<span style="color: #dc3545; font-size: 16px;">❌ این کد در {} منقضی شده است</span>', (obj.created_at + timedelta(minutes=10)).strftime('%Y/%m/%d %H:%M'))
-        remaining = max(0, (obj.created_at + timedelta(minutes=10) - timezone.now()).seconds // 60)
-        return format_html('<span style="color: #28a745; font-size: 16px;">✅ این کد تا {} معتبر است ({} دقیقه باقی)</span>', (obj.created_at + timedelta(minutes=10)).strftime('%Y/%m/%d %H:%M'), remaining)
+            return format_html(
+                '<span style="color: #dc3545; font-size: 16px;">❌ این کد در {} منقضی شده است</span>',
+                expiration_time.strftime('%Y/%m/%d %H:%M')
+            )
+        remaining = max(0, (expiration_time - timezone.now()).seconds // 60)
+        return format_html(
+            '<span style="color: #28a745; font-size: 16px;">✅ این کد تا {} معتبر است ({} دقیقه باقی)</span>',
+            expiration_time.strftime('%Y/%m/%d %H:%M'), remaining
+        )
     expiry_status_display.short_description = '🔍 وضعیت انقضا'
     
     def created_at_short(self, obj):
-        return obj.created_at.strftime('%Y/%m/%d %H:%M')
+        if obj.created_at:
+            return obj.created_at.strftime('%Y/%m/%d %H:%M')
+        return '-'
     created_at_short.short_description = '📅 تاریخ ایجاد'
     
     actions = ['mark_as_used', 'mark_as_unused', 'delete_expired']

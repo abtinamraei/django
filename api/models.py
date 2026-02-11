@@ -14,7 +14,7 @@ class EmailVerificationCode(models.Model):
 
     def is_expired(self):
         """بررسی اینکه کد منقضی شده یا نه (10 دقیقه اعتبار)"""
-        if self.created_at is None:  # ✅ هندل کردن None
+        if self.created_at is None:
             return True
         expiration_time = self.created_at + timedelta(minutes=10)
         return timezone.now() > expiration_time
@@ -46,32 +46,25 @@ class Category(models.Model):
 
 # ---------------------- Product ----------------------
 class Product(models.Model):
-    # ارتباط با دسته‌بندی
     category = models.ForeignKey(Category, on_delete=models.CASCADE, related_name="products")
     
-    # اطلاعات پایه
     name = models.CharField(max_length=200)
     slug = models.SlugField(max_length=200, unique=True, blank=True)
     description = models.TextField(blank=True, null=True)
     price = models.DecimalField(max_digits=10, decimal_places=0, help_text="Base price if no sizes")
     
-    # تصاویر
     main_image = models.ImageField(upload_to='products/main/', blank=True, null=True)
     
-    # سئو
     meta_title = models.CharField(max_length=60, blank=True)
     meta_description = models.CharField(max_length=160, blank=True)
     meta_keywords = models.CharField(max_length=255, blank=True)
     
-    # وضعیت
     is_active = models.BooleanField(default=True)
     is_featured = models.BooleanField(default=False, help_text="Show in homepage")
     
-    # آمار
     view_count = models.PositiveIntegerField(default=0)
     sold_count = models.PositiveIntegerField(default=0)
     
-    # تاریخ
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -105,7 +98,6 @@ class Product(models.Model):
     
     @property
     def min_price(self):
-        """کمترین قیمت با احتساب سایزها"""
         sizes = ProductSize.objects.filter(color__product=self)
         if sizes.exists():
             return min(size.price for size in sizes)
@@ -113,7 +105,6 @@ class Product(models.Model):
     
     @property
     def total_stock(self):
-        """مجموع موجودی"""
         sizes = ProductSize.objects.filter(color__product=self)
         if sizes.exists():
             return sum(size.stock for size in sizes)
@@ -183,7 +174,6 @@ class ProductSize(models.Model):
 
     def save(self, *args, **kwargs):
         if not self.sku and self.color and self.color.product:
-            # ساخت SKU خودکار
             product_code = str(self.color.product.id).zfill(4)
             color_code = self.color.name[:2].upper()
             size_code = self.size.replace(' ', '').upper()
@@ -211,7 +201,6 @@ class CartItem(models.Model):
         return self.product_size.price * self.quantity
 
     def clean(self):
-        """بررسی موجودی قبل از اضافه به سبد خرید"""
         if self.quantity > self.product_size.stock:
             from django.core.exceptions import ValidationError
             raise ValidationError(f"موجودی کافی نیست. حداکثر {self.product_size.stock} عدد موجود است.")
@@ -227,7 +216,9 @@ class ProductReview(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='reviews')
     rating = models.PositiveSmallIntegerField(
         validators=[MinValueValidator(1), MaxValueValidator(5)],
-        help_text="Rating between 1 and 5"
+        help_text="Rating between 1 and 5",
+        null=True,      # ✅ اجازه None
+        blank=True      # ✅ اجازه خالی بودن در فرم‌ها
     )
     comment = models.TextField(blank=True, null=True)
     is_approved = models.BooleanField(default=False)
@@ -243,16 +234,22 @@ class ProductReview(models.Model):
         ]
 
     def __str__(self):
-        return f"{self.user.username} - {self.product.name} ({self.rating})"
+        if self.rating:
+            return f"{self.user.username} - {self.product.name} ({self.rating})"
+        return f"{self.user.username} - {self.product.name} (بدون امتیاز)"
 
     @property
     def stars(self):
         """نمایش ستاره‌ها به صورت ⭐"""
+        if self.rating is None:
+            return '☆☆☆☆☆'
         return '⭐' * self.rating
     
     @property
     def stars_html(self):
         """نمایش ستاره‌های رنگی"""
+        if self.rating is None:
+            return '☆☆☆☆☆'
         stars = ''
         for i in range(5):
             if i < self.rating:
@@ -286,8 +283,8 @@ class Coupon(models.Model):
         validators=[MinValueValidator(1), MaxValueValidator(100)]
     )
     max_discount_amount = models.DecimalField(max_digits=10, decimal_places=0, blank=True, null=True)
-    valid_from = models.DateTimeField(null=True, blank=True)  # ✅ اصلاح: اجازه null
-    valid_to = models.DateTimeField(null=True, blank=True)    # ✅ اصلاح: اجازه null
+    valid_from = models.DateTimeField(null=True, blank=True)
+    valid_to = models.DateTimeField(null=True, blank=True)
     used_count = models.PositiveIntegerField(default=0)
     max_uses = models.PositiveIntegerField(default=1)
     is_active = models.BooleanField(default=True)
@@ -303,7 +300,6 @@ class Coupon(models.Model):
         """بررسی اعتبار کوپن با هندل کردن مقادیر None"""
         now = timezone.now()
         
-        # ✅ اگر تاریخ شروع یا پایان نداشت، کوپن نامعتبر است
         if self.valid_from is None or self.valid_to is None:
             return False
             
