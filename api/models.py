@@ -14,6 +14,8 @@ class EmailVerificationCode(models.Model):
 
     def is_expired(self):
         """بررسی اینکه کد منقضی شده یا نه (10 دقیقه اعتبار)"""
+        if self.created_at is None:  # ✅ هندل کردن None
+            return True
         expiration_time = self.created_at + timedelta(minutes=10)
         return timezone.now() > expiration_time
 
@@ -277,15 +279,15 @@ class Favorite(models.Model):
         return f"{self.user.username} ❤️ {self.product.name}"
 
 
-# ---------------------- Discount Coupon (اختیاری) ----------------------
+# ---------------------- Discount Coupon ----------------------
 class Coupon(models.Model):
     code = models.CharField(max_length=20, unique=True)
     discount_percent = models.PositiveSmallIntegerField(
         validators=[MinValueValidator(1), MaxValueValidator(100)]
     )
     max_discount_amount = models.DecimalField(max_digits=10, decimal_places=0, blank=True, null=True)
-    valid_from = models.DateTimeField()
-    valid_to = models.DateTimeField()
+    valid_from = models.DateTimeField(null=True, blank=True)  # ✅ اصلاح: اجازه null
+    valid_to = models.DateTimeField(null=True, blank=True)    # ✅ اصلاح: اجازه null
     used_count = models.PositiveIntegerField(default=0)
     max_uses = models.PositiveIntegerField(default=1)
     is_active = models.BooleanField(default=True)
@@ -298,7 +300,13 @@ class Coupon(models.Model):
         return self.code
 
     def is_valid(self):
+        """بررسی اعتبار کوپن با هندل کردن مقادیر None"""
         now = timezone.now()
+        
+        # ✅ اگر تاریخ شروع یا پایان نداشت، کوپن نامعتبر است
+        if self.valid_from is None or self.valid_to is None:
+            return False
+            
         return (self.is_active and 
                 self.valid_from <= now <= self.valid_to and 
                 self.used_count < self.max_uses)

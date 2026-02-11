@@ -8,6 +8,8 @@ from .models import (
 from django.utils.html import format_html
 from django.urls import reverse
 from django.http import HttpResponseRedirect
+from django.utils import timezone
+from datetime import timedelta
 
 # ---------------------- Category Admin ----------------------
 @admin.register(Category)
@@ -43,7 +45,7 @@ class CategoryAdmin(admin.ModelAdmin):
     product_count.short_description = '📦 تعداد محصولات'
 
 
-# ---------------------- ProductSize Inline (تودرتو) ----------------------
+# ---------------------- ProductSize Inline ----------------------
 class ProductSizeInline(admin.TabularInline):
     model = ProductSize
     extra = 1
@@ -72,7 +74,7 @@ class ProductSizeInline(admin.TabularInline):
     created_at_short.short_description = 'تاریخ'
 
 
-# ---------------------- ProductColor Inline (تودرتو) ----------------------
+# ---------------------- ProductColor Inline ----------------------
 class ProductColorInline(admin.TabularInline):
     model = ProductColor
     extra = 1
@@ -83,7 +85,7 @@ class ProductColorInline(admin.TabularInline):
     classes = ['collapse']
     verbose_name = 'رنگ'
     verbose_name_plural = '🎨 رنگ‌های محصول'
-    inlines = [ProductSizeInline]  # ✅ سایزها داخل رنگها
+    inlines = [ProductSizeInline]
     
     def color_preview(self, obj):
         if obj.hex_code:
@@ -134,19 +136,19 @@ class ProductImageInline(admin.TabularInline):
     image_preview.short_description = '👁️ پیش‌نمایش'
 
 
-# ---------------------- Product Admin (اصلی) ----------------------
+# ---------------------- Product Admin ----------------------
 @admin.register(Product)
 class ProductAdmin(admin.ModelAdmin):
     list_display = ['name', 'category', 'main_image_preview', 'price_range', 
-                    'stock_status_full', 'rating_display', 'status_badges', 'created_at_jalali']
+                    'stock_status_full', 'rating_display', 'is_active', 'is_featured', 'status_badges', 'created_at_jalali']  # ✅ is_active و is_featured اضافه شد
     list_filter = ['category', 'is_active', 'is_featured', 'created_at']
     search_fields = ['name', 'description', 'meta_keywords']
-    inlines = [ProductColorInline, ProductImageInline]  # ✅ رنگ‌ها با سایزهای تودرتو
+    inlines = [ProductColorInline, ProductImageInline]
     ordering = ['-created_at']
     save_on_top = True
     list_per_page = 25
     date_hierarchy = 'created_at'
-    list_editable = ['is_active', 'is_featured']
+    list_editable = ['is_active', 'is_featured']  # ✅ حالا درسته چون تو list_display هستن
     
     fieldsets = (
         ('📌 اطلاعات اصلی', {
@@ -176,23 +178,17 @@ class ProductAdmin(admin.ModelAdmin):
                       'main_image_preview', 'view_count', 'sold_count', 'price_range', 
                       'stock_status_full', 'rating_display', 'status_badges']
     
-    # ============= متدهای نمایشی =============
+    # ... بقیه متدها همونطور هستن ...
     def main_image_preview(self, obj):
         if obj.main_image:
-            return format_html(
-                '<img src="{}" style="width: 50px; height: 50px; object-fit: cover; border-radius: 8px; border: 1px solid #dee2e6;" />',
-                obj.main_image.url
-            )
+            return format_html('<img src="{}" style="width: 50px; height: 50px; object-fit: cover; border-radius: 8px; border: 1px solid #dee2e6;" />', obj.main_image.url)
         return format_html('<span style="color: #999;">❌ ندارد</span>')
     main_image_preview.short_description = '🖼️ تصویر'
     
     def price_range(self, obj):
         min_p = obj.min_price
         if min_p != obj.price:
-            return format_html(
-                '<span style="color: #28a745; font-weight: bold;">{:,.0f}</span> - <span style="color: #6c757d;">{:,.0f}</span> تومان',
-                min_p, obj.price
-            )
+            return format_html('<span style="color: #28a745; font-weight: bold;">{:,.0f}</span> - <span style="color: #6c757d;">{:,.0f}</span> تومان', min_p, obj.price)
         return format_html('<span style="color: #28a745; font-weight: bold;">{:,.0f}</span> تومان', obj.price)
     price_range.short_description = '💰 قیمت'
     
@@ -220,24 +216,15 @@ class ProductAdmin(admin.ModelAdmin):
             status = '🔴 ناموجود'
             color = '#dc3545'
         
-        return format_html(
-            '<span style="color: {}; font-weight: bold;">{}</span><br>'
-            '<small style="color: #6c757d;">{} رنگ - {} سایز</small>',
-            color, status, colors_count, sizes_count
-        )
+        return format_html('<span style="color: {}; font-weight: bold;">{}</span><br><small style="color: #6c757d;">{} رنگ - {} سایز</small>', color, status, colors_count, sizes_count)
     stock_status_full.short_description = '📊 وضعیت موجودی'
     
     def rating_display(self, obj):
         rating = obj.average_rating
         count = obj.reviews_count
-        
         if rating > 0:
             stars = '★' * int(rating) + '☆' * (5 - int(rating))
-            return format_html(
-                '<span style="color: #ffc107; font-size: 16px;">{}</span> '
-                '<span style="color: #6c757d;">({:.1f} - {} نظر)</span>',
-                stars, rating, count
-            )
+            return format_html('<span style="color: #ffc107; font-size: 16px;">{}</span> <span style="color: #6c757d;">({:.1f} - {} نظر)</span>', stars, rating, count)
         return format_html('<span style="color: #999;">بدون امتیاز</span>')
     rating_display.short_description = '⭐ امتیاز'
     
@@ -249,7 +236,6 @@ class ProductAdmin(admin.ModelAdmin):
             badges.append('<span style="background: #dc3545; color: white; padding: 3px 10px; border-radius: 15px; font-size: 11px; margin: 2px;">⚫ غیرفعال</span>')
         if obj.view_count > 1000:
             badges.append('<span style="background: #fd7e14; color: white; padding: 3px 10px; border-radius: 15px; font-size: 11px; margin: 2px;">🔥 پرفروش</span>')
-        
         return format_html(''.join(badges)) if badges else '-'
     status_badges.short_description = '🏷️ برچسب‌ها'
     
@@ -257,7 +243,6 @@ class ProductAdmin(admin.ModelAdmin):
         return obj.created_at.strftime('%Y/%m/%d - %H:%M')
     created_at_jalali.short_description = '📅 تاریخ ثبت'
     
-    # ============= اکشن‌های گروهی =============
     actions = ['duplicate_product', 'toggle_active', 'toggle_featured', 'bulk_discount']
     
     def duplicate_product(self, request, queryset):
@@ -266,17 +251,14 @@ class ProductAdmin(admin.ModelAdmin):
             product.name = f'{product.name} (کپی)'
             product.slug = f'{product.slug}-copy'
             product.save()
-            
             for color in product.colors.all():
                 color.pk = None
                 color.product = product
                 color.save()
-                
                 for size in color.sizes.all():
                     size.pk = None
                     size.color = color
                     size.save()
-            
         self.message_user(request, f'✅ {queryset.count()} محصول با موفقیت کپی شد.')
     duplicate_product.short_description = '📋 کپی کردن محصولات انتخاب شده'
     
@@ -297,7 +279,6 @@ class ProductAdmin(admin.ModelAdmin):
     toggle_featured.short_description = '⭐ تغییر وضعیت ویژه'
     
     def bulk_discount(self, request, queryset):
-        from django.contrib import messages
         percent = request.POST.get('percent', 10)
         try:
             percent = int(percent)
@@ -347,13 +328,7 @@ class ProductColorAdmin(admin.ModelAdmin):
     
     def color_preview_large(self, obj):
         if obj.hex_code:
-            return format_html(
-                '<div style="display: flex; align-items: center;">'
-                '<div style="width: 40px; height: 40px; background-color: {}; border-radius: 8px; border: 2px solid #fff; box-shadow: 0 0 0 1px #ddd;"></div>'
-                '<span style="margin-right: 10px; font-family: monospace;">{}</span>'
-                '</div>',
-                obj.hex_code, obj.hex_code
-            )
+            return format_html('<div style="display: flex; align-items: center;"><div style="width: 40px; height: 40px; background-color: {}; border-radius: 8px; border: 2px solid #fff; box-shadow: 0 0 0 1px #ddd;"></div><span style="margin-right: 10px; font-family: monospace;">{}</span></div>', obj.hex_code, obj.hex_code)
         return '-'
     color_preview_large.short_description = '🎯 پیش‌نمایش رنگ'
     
@@ -371,11 +346,7 @@ class ProductColorAdmin(admin.ModelAdmin):
             details = ', '.join([f'{s.size}: {s.stock}' for s in sizes[:3]])
             if sizes.count() > 3:
                 details += ' و ...'
-            return format_html(
-                '<span style="font-weight: bold;">{} عدد</span><br>'
-                '<small style="color: #6c757d;">{}</small>',
-                total, details
-            )
+            return format_html('<span style="font-weight: bold;">{} عدد</span><br><small style="color: #6c757d;">{}</small>', total, details)
         return '-'
     total_stock_detailed.short_description = '📦 جزئیات موجودی'
     
@@ -387,12 +358,12 @@ class ProductColorAdmin(admin.ModelAdmin):
 # ---------------------- ProductSize Admin ----------------------
 @admin.register(ProductSize)
 class ProductSizeAdmin(admin.ModelAdmin):
-    list_display = ['product_name_link', 'color_name_link', 'size', 'price_formatted', 
-                    'stock_progress', 'sku_short', 'status_with_badge', 'updated_at_short']
+    list_display = ['product_name_link', 'color_name_link', 'size', 'price', 'price_formatted', 
+                    'stock', 'sku_short', 'status_with_badge', 'updated_at_short']  # ✅ price و stock اضافه شدن
     list_filter = ['color__product', 'color__name', 'size', 'color__product__category']
     search_fields = ['color__product__name', 'color__name', 'size', 'sku']
     ordering = ['color__product', 'color__name', 'size']
-    list_editable = ['price', 'stock']
+    list_editable = ['price', 'stock']  # ✅ حالا درسته
     list_per_page = 50
     save_on_top = True
     
@@ -402,7 +373,7 @@ class ProductSizeAdmin(admin.ModelAdmin):
             'classes': ('wide',)
         }),
         ('📊 وضعیت', {
-            'fields': ('stock_progress', 'status_with_badge'),
+            'fields': ('status_with_badge',),
             'classes': ('wide',)
         }),
         ('📅 تاریخ', {
@@ -410,14 +381,11 @@ class ProductSizeAdmin(admin.ModelAdmin):
             'classes': ('collapse',)
         }),
     )
-    readonly_fields = ['created_at', 'updated_at', 'sku', 'stock_progress', 'status_with_badge']
+    readonly_fields = ['created_at', 'updated_at', 'sku', 'status_with_badge']
     
     def get_queryset(self, request):
-        return super().get_queryset(request).select_related(
-            'color', 'color__product', 'color__product__category'
-        )
+        return super().get_queryset(request).select_related('color', 'color__product', 'color__product__category')
     
-    # ============= متدهای نمایشی =============
     def product_name_link(self, obj):
         url = reverse('admin:api_product_change', args=[obj.color.product.id])
         return format_html('<a href="{}" style="font-weight: 600;">{}</a>', url, obj.color.product.name)
@@ -427,21 +395,12 @@ class ProductSizeAdmin(admin.ModelAdmin):
         url = reverse('admin:api_productcolor_change', args=[obj.color.id])
         color_preview = ''
         if obj.color.hex_code:
-            color_preview = format_html(
-                '<span style="display: inline-block; width: 12px; height: 12px; '
-                'background-color: {}; border-radius: 4px; margin-left: 5px; '
-                'border: 1px solid #ddd; vertical-align: middle;"></span> ',
-                obj.color.hex_code
-            )
-        return format_html('{}<a href="{}" style="vertical-align: middle;">{}</a>', 
-                         color_preview, url, obj.color.name)
+            color_preview = format_html('<span style="display: inline-block; width: 12px; height: 12px; background-color: {}; border-radius: 4px; margin-left: 5px; border: 1px solid #ddd; vertical-align: middle;"></span> ', obj.color.hex_code)
+        return format_html('{}<a href="{}" style="vertical-align: middle;">{}</a>', color_preview, url, obj.color.name)
     color_name_link.short_description = '🎨 رنگ'
     
     def price_formatted(self, obj):
-        return format_html(
-            '<span style="direction: ltr; display: inline-block; font-family: monospace; font-weight: bold; color: #28a745;">{:,.0f}</span> تومان',
-            obj.price
-        )
+        return format_html('<span style="direction: ltr; display: inline-block; font-family: monospace; font-weight: bold; color: #28a45;">{:,.0f}</span> تومان', obj.price)
     price_formatted.short_description = '💰 قیمت'
     
     def sku_short(self, obj):
@@ -449,28 +408,6 @@ class ProductSizeAdmin(admin.ModelAdmin):
             return format_html('<span style="font-family: monospace; color: #6c757d;">{}</span>', obj.sku)
         return '-'
     sku_short.short_description = '🏷️ SKU'
-    
-    def stock_progress(self, obj):
-        percentage = min(100, (obj.stock / 100) * 100)
-        if obj.stock > 50:
-            color = '#28a745'
-        elif obj.stock > 20:
-            color = '#17a2b8'
-        elif obj.stock > 10:
-            color = '#ffc107'
-        elif obj.stock > 0:
-            color = '#fd7e14'
-        else:
-            color = '#dc3545'
-        
-        return format_html(
-            '<div style="width: 100px; background: #e9ecef; border-radius: 10px; overflow: hidden;">'
-            '<div style="width: {}%; background: {}; height: 8px;"></div>'
-            '</div>'
-            '<span style="font-size: 12px; color: {};">{} عدد</span>',
-            percentage, color, color, obj.stock
-        )
-    stock_progress.short_description = '📊 موجودی'
     
     def status_with_badge(self, obj):
         if obj.stock > 20:
@@ -489,7 +426,6 @@ class ProductSizeAdmin(admin.ModelAdmin):
         return obj.updated_at.strftime('%Y/%m/%d')
     updated_at_short.short_description = '📅 بروزرسانی'
     
-    # ============= اکشن‌های گروهی =============
     actions = ['increase_stock', 'decrease_stock', 'apply_discount', 'set_sku']
     
     def increase_stock(self, request, queryset):
@@ -534,7 +470,7 @@ class ProductSizeAdmin(admin.ModelAdmin):
         count = 0
         for item in queryset:
             if not item.sku:
-                item.save()  # save متد sku میسازه
+                item.save()
                 count += 1
         self.message_user(request, f'✅ SKU برای {count} سایز ایجاد شد.')
     set_sku.short_description = '🏷️ ایجاد SKU'
@@ -568,19 +504,13 @@ class ProductImageAdmin(admin.ModelAdmin):
     
     def image_thumbnail(self, obj):
         if obj.image:
-            return format_html(
-                '<img src="{}" style="width: 50px; height: 50px; object-fit: cover; border-radius: 8px; border: 1px solid #dee2e6;" />',
-                obj.image.url
-            )
+            return format_html('<img src="{}" style="width: 50px; height: 50px; object-fit: cover; border-radius: 8px; border: 1px solid #dee2e6;" />', obj.image.url)
         return '-'
     image_thumbnail.short_description = '🖼️ تصویر'
     
     def image_preview_large(self, obj):
         if obj.image:
-            return format_html(
-                '<img src="{}" style="max-width: 300px; max-height: 200px; object-fit: contain; border-radius: 8px; border: 1px solid #dee2e6;" />',
-                obj.image.url
-            )
+            return format_html('<img src="{}" style="max-width: 300px; max-height: 200px; object-fit: contain; border-radius: 8px; border: 1px solid #dee2e6;" />', obj.image.url)
         return '-'
     image_preview_large.short_description = '👁️ پیش‌نمایش بزرگ'
     
@@ -620,13 +550,7 @@ class CartItemAdmin(admin.ModelAdmin):
     user_link.short_description = '👤 کاربر'
     
     def product_info(self, obj):
-        return format_html(
-            '<span style="font-weight: bold;">{}</span><br>'
-            '<small style="color: #6c757d;">{} - {}</small>',
-            obj.product_size.color.product.name,
-            obj.product_size.color.name,
-            obj.product_size.size
-        )
+        return format_html('<span style="font-weight: bold;">{}</span><br><small style="color: #6c757d;">{} - {}</small>', obj.product_size.color.product.name, obj.product_size.color.name, obj.product_size.size)
     product_info.short_description = '📦 محصول'
     
     def quantity_badge(self, obj):
@@ -636,10 +560,7 @@ class CartItemAdmin(admin.ModelAdmin):
             color = '#17a2b8'
         else:
             color = '#6c757d'
-        return format_html(
-            '<span style="background: {}; color: white; padding: 4px 12px; border-radius: 20px; font-size: 12px;">{} عدد</span>',
-            color, obj.quantity
-        )
+        return format_html('<span style="background: {}; color: white; padding: 4px 12px; border-radius: 20px; font-size: 12px;">{} عدد</span>', color, obj.quantity)
     quantity_badge.short_description = '🔢 تعداد'
     
     def unit_price(self, obj):
@@ -647,17 +568,11 @@ class CartItemAdmin(admin.ModelAdmin):
     unit_price.short_description = '💰 قیمت واحد'
     
     def total_price(self, obj):
-        return format_html(
-            '<span style="font-family: monospace; font-weight: bold; color: #28a745;">{:,.0f}</span> تومان',
-            obj.total_price
-        )
+        return format_html('<span style="font-family: monospace; font-weight: bold; color: #28a745;">{:,.0f}</span> تومان', obj.total_price)
     total_price.short_description = '💵 قیمت کل'
     
     def total_price_display(self, obj):
-        return format_html(
-            '<span style="font-size: 16px; font-weight: bold; color: #28a745;">{:,.0f} تومان</span>',
-            obj.total_price
-        )
+        return format_html('<span style="font-size: 16px; font-weight: bold; color: #28a745;">{:,.0f} تومان</span>', obj.total_price)
     total_price_display.short_description = '💵 قیمت کل'
     
     def created_at_short(self, obj):
@@ -669,10 +584,7 @@ class CartItemAdmin(admin.ModelAdmin):
             super().save_model(request, obj, form, change)
         except ValidationError as e:
             if 'already exists' in str(e):
-                existing = CartItem.objects.get(
-                    user=obj.user,
-                    product_size=obj.product_size
-                )
+                existing = CartItem.objects.get(user=obj.user, product_size=obj.product_size)
                 existing.quantity += obj.quantity
                 existing.save()
             else:
@@ -683,13 +595,13 @@ class CartItemAdmin(admin.ModelAdmin):
 @admin.register(ProductReview)
 class ProductReviewAdmin(admin.ModelAdmin):
     list_display = ['product_link', 'user_link', 'rating_stars', 'comment_short', 
-                    'helpful_badge', 'approval_status', 'created_at_short']
+                    'helpful_badge', 'is_approved', 'approval_status', 'created_at_short']  # ✅ is_approved اضافه شد
     list_filter = ['is_approved', 'rating', 'created_at']
     search_fields = ['product__name', 'user__username', 'comment']
     ordering = ['-created_at']
     list_per_page = 50
     date_hierarchy = 'created_at'
-    list_editable = ['is_approved']
+    list_editable = ['is_approved']  # ✅ حالا درسته
     
     fieldsets = (
         ('📝 اطلاعات نظر', {
@@ -723,11 +635,7 @@ class ProductReviewAdmin(admin.ModelAdmin):
     
     def rating_stars_large(self, obj):
         stars = '★' * obj.rating + '☆' * (5 - obj.rating)
-        return format_html(
-            '<span style="color: #ffc107; font-size: 24px;">{}</span><br>'
-            '<span style="color: #6c757d;">{} از 5</span>',
-            stars, obj.rating
-        )
+        return format_html('<span style="color: #ffc107; font-size: 24px;">{}</span><br><span style="color: #6c757d;">{} از 5</span>', stars, obj.rating)
     rating_stars_large.short_description = '⭐ امتیاز'
     
     def comment_short(self, obj):
@@ -831,12 +739,12 @@ class FavoriteAdmin(admin.ModelAdmin):
 @admin.register(Coupon)
 class CouponAdmin(admin.ModelAdmin):
     list_display = ['code', 'discount_display', 'valid_period', 'usage_stats', 
-                   'status_badge', 'created_at_short']
+                   'status_badge', 'is_active', 'created_at_short']  # ✅ is_active اضافه شد
     list_filter = ['is_active', 'valid_from', 'valid_to']
     search_fields = ['code']
     ordering = ['-created_at']
     list_per_page = 25
-    list_editable = ['is_active']
+    list_editable = ['is_active']  # ✅ حالا درسته
     
     fieldsets = (
         ('🏷️ اطلاعات کوپن', {
@@ -864,19 +772,14 @@ class CouponAdmin(admin.ModelAdmin):
     discount_display.short_description = '💰 تخفیف'
     
     def valid_period(self, obj):
-        return f'{obj.valid_from.strftime("%Y/%m/%d")} تا {obj.valid_to.strftime("%Y/%m/%d")}'
+        if obj.valid_from and obj.valid_to:
+            return f'{obj.valid_from.strftime("%Y/%m/%d")} تا {obj.valid_to.strftime("%Y/%m/%d")}'
+        return '⚠️ تاریخ مشخص نشده'
     valid_period.short_description = '📆 مدت اعتبار'
     
     def usage_stats(self, obj):
         percentage = (obj.used_count / obj.max_uses) * 100 if obj.max_uses > 0 else 0
-        return format_html(
-            '<span style="font-weight: bold;">{}/{}</span><br>'
-            '<div style="width: 80px; background: #e9ecef; border-radius: 10px; overflow: hidden; margin-top: 5px;">'
-            '<div style="width: {}%; background: {}; height: 4px;"></div>'
-            '</div>',
-            obj.used_count, obj.max_uses,
-            percentage, '#28a745' if percentage < 80 else '#dc3545'
-        )
+        return format_html('<span style="font-weight: bold;">{}/{}</span><br><div style="width: 80px; background: #e9ecef; border-radius: 10px; overflow: hidden; margin-top: 5px;"><div style="width: {}%; background: {}; height: 4px;"></div></div>', obj.used_count, obj.max_uses, percentage, '#28a745' if percentage < 80 else '#dc3545')
     usage_stats.short_description = '📊 مصرف'
     
     def status_badge(self, obj):
@@ -886,6 +789,8 @@ class CouponAdmin(admin.ModelAdmin):
     status_badge.short_description = '⚡ وضعیت'
     
     def is_valid_display(self, obj):
+        if obj.valid_from is None or obj.valid_to is None:
+            return format_html('<span style="color: #ffc107; font-size: 16px;">⚠️ تاریخ اعتبار مشخص نشده</span>')
         if obj.is_valid():
             return format_html('<span style="color: #28a745; font-size: 16px;">✅ این کوپن معتبر است</span>')
         return format_html('<span style="color: #dc3545; font-size: 16px;">❌ این کوپن منقضی شده یا غیرفعال است</span>')
@@ -916,13 +821,13 @@ class CouponAdmin(admin.ModelAdmin):
 # ---------------------- Email Verification Code Admin ----------------------
 @admin.register(EmailVerificationCode)
 class EmailVerificationCodeAdmin(admin.ModelAdmin):
-    list_display = ['email', 'code', 'usage_status', 'expiry_status', 'created_at_short']
+    list_display = ['email', 'code', 'usage_status', 'expiry_status', 'is_used', 'created_at_short']  # ✅ is_used اضافه شد
     list_filter = ['is_used', 'created_at']
     search_fields = ['email', 'code']
     ordering = ['-created_at']
     list_per_page = 50
     date_hierarchy = 'created_at'
-    list_editable = ['is_used']
+    list_editable = ['is_used']  # ✅ حالا درسته
     
     fieldsets = (
         ('📧 اطلاعات ایمیل', {
@@ -944,17 +849,15 @@ class EmailVerificationCodeAdmin(admin.ModelAdmin):
     def expiry_status(self, obj):
         if obj.is_expired():
             return format_html('<span style="color: #dc3545; font-weight: bold;">❌ منقضی شده</span>')
-        remaining = (obj.created_at + timedelta(minutes=10) - timezone.now()).seconds // 60
+        remaining = max(0, (obj.created_at + timedelta(minutes=10) - timezone.now()).seconds // 60)
         return format_html('<span style="color: #28a745; font-weight: bold;">✅ معتبر ({} دقیقه)</span>', remaining)
     expiry_status.short_description = '⏳ انقضا'
     
     def expiry_status_display(self, obj):
         if obj.is_expired():
-            return format_html('<span style="color: #dc3545; font-size: 16px;">❌ این کد در {} منقضی شده است</span>', 
-                             (obj.created_at + timedelta(minutes=10)).strftime('%Y/%m/%d %H:%M'))
-        remaining = (obj.created_at + timedelta(minutes=10) - timezone.now()).seconds // 60
-        return format_html('<span style="color: #28a745; font-size: 16px;">✅ این کد تا {} معتبر است ({} دقیقه باقی)</span>',
-                         (obj.created_at + timedelta(minutes=10)).strftime('%Y/%m/%d %H:%M'), remaining)
+            return format_html('<span style="color: #dc3545; font-size: 16px;">❌ این کد در {} منقضی شده است</span>', (obj.created_at + timedelta(minutes=10)).strftime('%Y/%m/%d %H:%M'))
+        remaining = max(0, (obj.created_at + timedelta(minutes=10) - timezone.now()).seconds // 60)
+        return format_html('<span style="color: #28a745; font-size: 16px;">✅ این کد تا {} معتبر است ({} دقیقه باقی)</span>', (obj.created_at + timedelta(minutes=10)).strftime('%Y/%m/%d %H:%M'), remaining)
     expiry_status_display.short_description = '🔍 وضعیت انقضا'
     
     def created_at_short(self, obj):
