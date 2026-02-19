@@ -1,1059 +1,308 @@
-from django.contrib import admin
-from django.core.exceptions import ValidationError
 from django.db import models
-from django.utils.safestring import mark_safe
-from django.urls import reverse
+from django.contrib.auth.models import User
+from django.core.validators import MinValueValidator, MaxValueValidator
 from django.utils import timezone
-from django.contrib import messages
+from django.utils.text import slugify
 from datetime import timedelta
-from typing import Optional, Dict, Any
-from .models import (
-    Category, Product, ProductColor, ProductSize, ProductImage,
-    CartItem, ProductReview, Favorite, Coupon, EmailVerificationCode
-)
+
+# ---------------------- Email Verification Code ----------------------
+class EmailVerificationCode(models.Model):
+    email = models.EmailField(unique=True)
+    code = models.CharField(max_length=6)
+    created_at = models.DateTimeField(auto_now_add=True)
+    is_used = models.BooleanField(default=False)
+
+    def is_expired(self):
+        """بررسی اینکه کد منقضی شده یا نه (10 دقیقه اعتبار)"""
+        if self.created_at is None:
+            return True
+        expiration_time = self.created_at + timedelta(minutes=10)
+        return timezone.now() > expiration_time
+
+    def __str__(self):
+        return f"{self.email} - {self.code}"
 
 
-# ============================================================================
-# UTILITY FUNCTIONS
-# ============================================================================
+# ---------------------- Category ----------------------
+class Category(models.Model):
+    name = models.CharField(max_length=100, unique=True)
+    slug = models.SlugField(max_length=100, unique=True, blank=True)
+    description = models.TextField(blank=True, null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
 
-def format_price(price) -> str:
-    """فرمت‌سازی قیمت با جداکننده هزارگان"""
-    try:
-        return f"{int(price):,}"
-    except:
-        return str(price)
+    class Meta:
+        verbose_name_plural = "Categories"
+        ordering = ['name']
 
+    def __str__(self):
+        return self.name
 
-def get_status_badge(text: str, color: str, icon: str = "") -> str:
-    """ایجاد نشان وضعیت یکسان در سراسر ادمین"""
-    colors = {
-        'success': '#28a745',
-        'info': '#17a2b8',
-        'warning': '#ffc107',
-        'danger': '#dc3545',
-        'secondary': '#6c757d',
-        'primary': '#007bff',
-        'dark': '#343a40',
-        'orange': '#fd7e14',
-        'purple': '#9c27b0'
-    }
-    bg_color = colors.get(color, color)
-    return f'<span style="background: {bg_color}; color: white; padding: 3px 10px; border-radius: 15px; font-size: 11px; font-weight: 500;">{icon} {text}</span>'
+    def save(self, *args, **kwargs):
+        if not self.slug:
+            self.slug = slugify(self.name)
+        super().save(*args, **kwargs)
 
 
-def get_stars_html(rating: float, size: int = 16) -> str:
-    """ایجاد نمایش ستاره برای امتیاز"""
-    if not rating or rating <= 0:
-        return '<span style="color: #999;">⭐ بدون امتیاز</span>'
+# ---------------------- Product ----------------------
+class Product(models.Model):
+    category = models.ForeignKey(Category, on_delete=models.CASCADE, related_name="products")
     
-    full_stars = '★' * int(rating)
-    empty_stars = '☆' * (5 - int(rating))
-    return f'<span style="color: #ffc107; font-size: {size}px;">{full_stars}{empty_stars}</span>'
-
-
-# ============================================================================
-# MIXINS
-# ============================================================================
-
-class JalaliDateMixin:
-    """میکسین برای نمایش تاریخ به فرمت شمسی"""
+    name = models.CharField(max_length=200)
+    slug = models.SlugField(max_length=200, unique=True, blank=True)
+    description = models.TextField(blank=True, null=True)
+    price = models.DecimalField(max_digits=10, decimal_places=0, help_text="Base price if no sizes")
     
-    def get_jalali_date(self, date, format_str='%Y/%m/%d'):
-        if date:
-            return date.strftime(format_str)
-        return '-'
+    main_image = models.ImageField(upload_to='products/main/', blank=True, null=True)
     
-    def get_jalali_datetime(self, date):
-        return self.get_jalali_date(date, '%Y/%m/%d - %H:%M')
-
-
-class StockStatusMixin:
-    """میکسین برای وضعیت موجودی"""
+    meta_title = models.CharField(max_length=60, blank=True)
+    meta_description = models.CharField(max_length=160, blank=True)
+    meta_keywords = models.CharField(max_length=255, blank=True)
     
-    def get_stock_status(self, stock: int) -> Dict[str, Any]:
-        if stock > 100:
-            return {'text': 'فوق‌العاده', 'color': 'success', 'icon': '🟢'}
-        elif stock > 50:
-            return {'text': 'عالی', 'color': 'success', 'icon': '🟢'}
-        elif stock > 20:
-            return {'text': 'خوب', 'color': 'info', 'icon': '🔵'}
-        elif stock > 10:
-            return {'text': 'متوسط', 'color': 'warning', 'icon': '🟡'}
-        elif stock > 5:
-            return {'text': 'محدود', 'color': 'warning', 'icon': '🟡'}
-        elif stock > 0:
-            return {'text': 'کم', 'color': 'orange', 'icon': '🟠'}
-        else:
-            return {'text': 'ناموجود', 'color': 'danger', 'icon': '🔴'}
-
-
-# ============================================================================
-# INLINES
-# ============================================================================
-
-class ProductSizeInline(admin.TabularInline):
-    """اینلاین برای مدیریت سایزهای محصول"""
-    model = ProductSize
-    extra = 1
-    fields = ['size', 'price', 'stock', 'sku', 'status_display', 'created_at_short']
-    readonly_fields = ['sku', 'status_display', 'created_at_short']
-    ordering = ['size']
-    classes = ['collapse']
-    verbose_name = 'سایز'
-    verbose_name_plural = '📏 سایزهای موجود'
+    is_active = models.BooleanField(default=True)
+    is_featured = models.BooleanField(default=False, help_text="Show in homepage")
     
-    def status_display(self, obj):
-        """نمایش وضعیت موجودی با رنگ مناسب"""
-        if obj.stock > 20:
-            return mark_safe(f'<span style="background: #28a745; color: white; padding: 3px 10px; border-radius: 15px;">✅ موجود ({obj.stock})</span>')
-        elif obj.stock > 10:
-            return mark_safe(f'<span style="background: #17a2b8; color: white; padding: 3px 10px; border-radius: 15px;">🟢 خوب ({obj.stock})</span>')
-        elif obj.stock > 5:
-            return mark_safe(f'<span style="background: #ffc107; color: black; padding: 3px 10px; border-radius: 15px;">🟡 محدود ({obj.stock})</span>')
-        elif obj.stock > 0:
-            return mark_safe(f'<span style="background: #fd7e14; color: white; padding: 3px 10px; border-radius: 15px;">🟠 کم ({obj.stock})</span>')
-        else:
-            return mark_safe('<span style="background: #dc3545; color: white; padding: 3px 10px; border-radius: 15px;">❌ ناموجود</span>')
-    status_display.short_description = 'وضعیت'
+    view_count = models.PositiveIntegerField(default=0)
+    sold_count = models.PositiveIntegerField(default=0)
     
-    def created_at_short(self, obj):
-        return obj.created_at.strftime('%Y/%m/%d') if obj.created_at else '-'
-    created_at_short.short_description = 'تاریخ'
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['slug']),
+            models.Index(fields=['is_active', '-created_at']),
+        ]
+
+    def __str__(self):
+        return self.name
+
+    def save(self, *args, **kwargs):
+        if not self.slug:
+            self.slug = slugify(self.name)
+        if not self.meta_title:
+            self.meta_title = self.name
+        super().save(*args, **kwargs)
+
+    @property
+    def average_rating(self):
+        reviews = self.reviews.filter(is_approved=True)
+        if not reviews.exists():
+            return 0
+        return round(sum(r.rating for r in reviews) / reviews.count(), 1)
+
+    @property
+    def reviews_count(self):
+        return self.reviews.filter(is_approved=True).count()
+    
+    @property
+    def min_price(self):
+        sizes = ProductSize.objects.filter(color__product=self)
+        if sizes.exists():
+            return min(size.price for size in sizes)
+        return self.price
+    
+    @property
+    def total_stock(self):
+        sizes = ProductSize.objects.filter(color__product=self)
+        if sizes.exists():
+            return sum(size.stock for size in sizes)
+        return 0
+    
+    @property
+    def is_in_stock(self):
+        return self.total_stock > 0
 
 
-class ProductColorInline(admin.TabularInline):
-    """اینلاین برای مدیریت رنگ‌های محصول"""
-    model = ProductColor
-    extra = 1
-    fields = ['name', 'hex_code', 'color_preview', 'order', 'sizes_count', 'total_stock_display']
-    readonly_fields = ['color_preview', 'sizes_count', 'total_stock_display']
-    show_change_link = True
-    ordering = ['order']
-    classes = ['collapse']
-    verbose_name = 'رنگ'
-    verbose_name_plural = '🎨 رنگ‌های محصول'
-    
-    def color_preview(self, obj):
-        """پیش‌نمایش رنگ با کد هگز"""
-        if obj.hex_code:
-            return mark_safe(
-                f'<div style="display: flex; align-items: center;">'
-                f'<div style="width: 30px; height: 30px; background-color: {obj.hex_code}; '
-                f'border-radius: 50%; border: 2px solid #fff; box-shadow: 0 0 0 1px #ddd;"></div>'
-                f'<span style="margin-right: 8px; font-family: monospace;">{obj.hex_code}</span>'
-                f'</div>'
-            )
-        return '-'
-    color_preview.short_description = '🎯 پیش‌نمایش'
-    
-    def sizes_count(self, obj):
-        """تعداد سایزهای هر رنگ"""
-        count = obj.sizes.count()
-        if count:
-            return mark_safe(f'<span style="background: #6c757d; color: white; padding: 2px 8px; border-radius: 12px;">{count} سایز</span>')
-        return '-'
-    sizes_count.short_description = '📊 تعداد سایزها'
-    
-    def total_stock_display(self, obj):
-        """مجموع موجودی هر رنگ"""
-        total = sum(size.stock for size in obj.sizes.all())
-        if total > 50:
-            return mark_safe(f'<span style="color: #28a745; font-weight: bold;">{total} عدد</span>')
-        elif total > 20:
-            return mark_safe(f'<span style="color: #17a2b8; font-weight: bold;">{total} عدد</span>')
-        elif total > 0:
-            return mark_safe(f'<span style="color: #ffc107; font-weight: bold;">{total} عدد</span>')
-        return mark_safe('<span style="color: #dc3545; font-weight: bold;">ناموجود</span>')
-    total_stock_display.short_description = '📦 مجموع موجودی'
+# ---------------------- Product Images ----------------------
+class ProductImage(models.Model):
+    product = models.ForeignKey(Product, related_name="images", on_delete=models.CASCADE)
+    image = models.ImageField(upload_to="products/gallery/")
+    alt_text = models.CharField(max_length=100, blank=True, help_text="توضیح برای سئو")
+    order = models.PositiveIntegerField(default=0)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['order']
+        indexes = [
+            models.Index(fields=['product', 'order']),
+        ]
+
+    def __str__(self):
+        return f"{self.product.name} - Image {self.order}"
+
+    def save(self, *args, **kwargs):
+        if not self.alt_text:
+            self.alt_text = self.product.name
+        super().save(*args, **kwargs)
 
 
-class ProductImageInline(admin.TabularInline):
-    """اینلاین برای مدیریت تصاویر محصول"""
-    model = ProductImage
-    extra = 1
-    fields = ['image', 'alt_text', 'order', 'image_preview']
-    readonly_fields = ['image_preview']
-    ordering = ['order']
-    classes = ['collapse']
-    verbose_name = 'تصویر'
-    verbose_name_plural = '🖼️ گالری تصاویر'
-    
-    def image_preview(self, obj):
-        """پیش‌نمایش تصویر"""
-        if obj.image:
-            return mark_safe(
-                f'<img src="{obj.image.url}" style="width: 60px; height: 60px; '
-                f'object-fit: cover; border-radius: 8px; border: 1px solid #dee2e6;" />'
-            )
-        return '-'
-    image_preview.short_description = '👁️ پیش‌نمایش'
+# ---------------------- Product Color ----------------------
+class ProductColor(models.Model):
+    product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name="colors")
+    name = models.CharField(max_length=50)
+    hex_code = models.CharField(max_length=7, blank=True, null=True, help_text="مثلاً #FF0000")
+    order = models.PositiveIntegerField(default=0)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['product', 'order', 'name']
+        unique_together = ('product', 'name')
+
+    def __str__(self):
+        return f"{self.product.name} - {self.name}"
 
 
-# ============================================================================
-# MODEL ADMINS
-# ============================================================================
+# ---------------------- Product Size ----------------------
+class ProductSize(models.Model):
+    color = models.ForeignKey(ProductColor, on_delete=models.CASCADE, related_name="sizes")
+    size = models.CharField(max_length=20)
+    price = models.DecimalField(max_digits=10, decimal_places=0)
+    stock = models.PositiveIntegerField(default=0)
+    sku = models.CharField(max_length=50, unique=True, blank=True, null=True, help_text="کد انبارداری")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
 
-@admin.register(Category)
-class CategoryAdmin(admin.ModelAdmin, JalaliDateMixin):
-    """مدیریت دسته‌بندی‌ها"""
-    
-    list_display = ['name', 'slug', 'description_short', 'product_count_badge', 'created_at_jalali']
-    list_filter = ['created_at']
-    search_fields = ['name', 'description']
-    prepopulated_fields = {'slug': ['name']}
-    ordering = ['name']
-    list_per_page = 25
-    
-    fieldsets = (
-        ('📁 اطلاعات اصلی', {
-            'fields': ('name', 'slug', 'description'),
-            'classes': ('wide',)
-        }),
-        ('📅 تاریخ', {
-            'fields': ('created_at', 'updated_at'),
-            'classes': ('collapse',)
-        }),
+    class Meta:
+        ordering = ['color', 'size']
+        unique_together = ('color', 'size')
+
+    def __str__(self):
+        return f"{self.color.product.name} - {self.color.name} - {self.size}"
+
+    def save(self, *args, **kwargs):
+        if not self.sku and self.color and self.color.product:
+            product_code = str(self.color.product.id).zfill(4)
+            color_code = self.color.name[:2].upper()
+            size_code = self.size.replace(' ', '').upper()
+            self.sku = f"PRD-{product_code}-{color_code}-{size_code}"
+        super().save(*args, **kwargs)
+
+
+# ---------------------- Cart Item ----------------------
+class CartItem(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="cart_items")
+    product_size = models.ForeignKey(ProductSize, on_delete=models.CASCADE)
+    quantity = models.PositiveIntegerField(default=1)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        unique_together = ('user', 'product_size')
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"{self.user.username} - {self.product_size} x {self.quantity}"
+
+    @property
+    def total_price(self):
+        return self.product_size.price * self.quantity
+
+    def clean(self):
+        if self.quantity > self.product_size.stock:
+            from django.core.exceptions import ValidationError
+            raise ValidationError(f"موجودی کافی نیست. حداکثر {self.product_size.stock} عدد موجود است.")
+
+    def save(self, *args, **kwargs):
+        self.clean()
+        super().save(*args, **kwargs)
+
+
+# ---------------------- Product Review ----------------------
+class ProductReview(models.Model):
+    product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name='reviews')
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='reviews')
+    rating = models.PositiveSmallIntegerField(
+        validators=[MinValueValidator(1), MaxValueValidator(5)],
+        help_text="Rating between 1 and 5",
+        null=True,      # ✅ اجازه None
+        blank=True      # ✅ اجازه خالی بودن در فرم‌ها
     )
-    readonly_fields = ['created_at', 'updated_at']
+    comment = models.TextField(blank=True, null=True)
+    is_approved = models.BooleanField(default=False)
+    helpful_count = models.PositiveIntegerField(default=0, help_text="تعداد افرادی که این نظر رو مفید دانستند")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        unique_together = ('product', 'user')
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['product', 'is_approved', '-created_at']),
+        ]
+
+    def __str__(self):
+        if self.rating:
+            return f"{self.user.username} - {self.product.name} ({self.rating})"
+        return f"{self.user.username} - {self.product.name} (بدون امتیاز)"
+
+    @property
+    def stars(self):
+        """نمایش ستاره‌ها به صورت ⭐"""
+        if self.rating is None:
+            return '☆☆☆☆☆'
+        return '⭐' * self.rating
     
-    def description_short(self, obj):
-        """خلاصه توضیحات"""
-        if obj.description:
-            return obj.description[:50] + '...' if len(obj.description) > 50 else obj.description
-        return '-'
-    description_short.short_description = '📝 توضیحات'
-    
-    def product_count_badge(self, obj):
-        """تعداد محصولات با لینک"""
-        count = obj.products.count()
-        url = reverse('admin:api_product_changelist') + f'?category__id__exact={obj.id}'
-        return mark_safe(
-            f'<a href="{url}" style="background: #28a745; color: white; padding: 3px 10px; '
-            f'border-radius: 15px; text-decoration: none; display: inline-block;">'
-            f'📦 {count} محصول</a>'
-        )
-    product_count_badge.short_description = 'تعداد محصولات'
-    
-    def created_at_jalali(self, obj):
-        return self.get_jalali_date(obj.created_at)
-    created_at_jalali.short_description = '📅 تاریخ ثبت'
+    @property
+    def stars_html(self):
+        """نمایش ستاره‌های رنگی"""
+        if self.rating is None:
+            return '☆☆☆☆☆'
+        stars = ''
+        for i in range(5):
+            if i < self.rating:
+                stars += '★'
+            else:
+                stars += '☆'
+        return stars
 
 
-@admin.register(Product)
-class ProductAdmin(admin.ModelAdmin, JalaliDateMixin, StockStatusMixin):
-    """مدیریت محصولات"""
-    
-    list_display = [
-        'name', 'category_link', 'main_image_thumbnail', 'price_display',
-        'stock_status_aggregated', 'rating_display', 'is_active', 'is_featured',
-        'status_badges', 'created_at_jalali'
-    ]
-    list_filter = ['category', 'is_active', 'is_featured', 'created_at']
-    search_fields = ['name', 'description', 'meta_keywords']
-    inlines = [ProductColorInline, ProductImageInline]
-    ordering = ['-created_at']
-    save_on_top = True
-    list_per_page = 25
-    date_hierarchy = 'created_at'
-    list_editable = ['is_active', 'is_featured']
-    
-    fieldsets = (
-        ('📌 اطلاعات اصلی', {
-            'fields': ('category', 'name', 'slug', 'description', 'price'),
-            'classes': ('wide',)
-        }),
-        ('🖼️ تصاویر', {
-            'fields': ('main_image', 'main_image_preview'),
-            'classes': ('wide',)
-        }),
-        ('⚙️ وضعیت و آمار', {
-            'fields': ('is_active', 'is_featured', 'view_count', 'sold_count'),
-            'classes': ('wide',)
-        }),
-        ('🔍 تنظیمات سئو', {
-            'fields': ('meta_title', 'meta_description', 'meta_keywords'),
-            'classes': ('collapse',)
-        }),
-        ('📅 تاریخ', {
-            'fields': ('created_at', 'updated_at'),
-            'classes': ('collapse',)
-        }),
+# ---------------------- Favorite ----------------------
+class Favorite(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='favorites')
+    product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name='favorited_by')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ('user', 'product')
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['user', '-created_at']),
+        ]
+
+    def __str__(self):
+        return f"{self.user.username} ❤️ {self.product.name}"
+
+
+# ---------------------- Discount Coupon ----------------------
+class Coupon(models.Model):
+    code = models.CharField(max_length=20, unique=True)
+    discount_percent = models.PositiveSmallIntegerField(
+        validators=[MinValueValidator(1), MaxValueValidator(100)]
     )
-    
-    prepopulated_fields = {'slug': ['name']}
-    readonly_fields = [
-        'created_at', 'updated_at', 'main_image_preview', 'view_count', 'sold_count',
-        'price_display', 'stock_status_aggregated', 'rating_display', 'status_badges'
-    ]
-    
-    def get_queryset(self, request):
-        return super().get_queryset(request).prefetch_related(
-            'colors__sizes', 'reviews'
-        )
-    
-    def category_link(self, obj):
-        """لینک به دسته‌بندی"""
-        url = reverse('admin:api_category_change', args=[obj.category.id])
-        return mark_safe(f'<a href="{url}">{obj.category.name}</a>')
-    category_link.short_description = 'دسته‌بندی'
-    category_link.admin_order_field = 'category__name'
-    
-    def main_image_thumbnail(self, obj):
-        """تصویر بندانگشتی"""
-        if obj.main_image:
-            return mark_safe(
-                f'<img src="{obj.main_image.url}" style="width: 50px; height: 50px; '
-                f'object-fit: cover; border-radius: 8px; border: 1px solid #dee2e6;" />'
-            )
-        return '-'
-    main_image_thumbnail.short_description = '🖼️ تصویر'
-    
-    def main_image_preview(self, obj):
-        """پیش‌نمایش بزرگ تصویر"""
-        if obj.main_image:
-            return mark_safe(
-                f'<img src="{obj.main_image.url}" style="max-width: 200px; max-height: 200px; '
-                f'object-fit: contain; border-radius: 8px; border: 1px solid #dee2e6;" />'
-            )
-        return '-'
-    main_image_preview.short_description = '👁️ پیش‌نمایش'
-    
-    def price_display(self, obj):
-        """نمایش قیمت با فرمت مناسب"""
-        min_price = obj.min_price
-        if min_price != obj.price:
-            return mark_safe(
-                f'<span style="color: #28a745; font-weight: bold;">{format_price(min_price)}</span> - '
-                f'<span style="color: #6c757d;">{format_price(obj.price)}</span> تومان'
-            )
-        return mark_safe(
-            f'<span style="color: #28a745; font-weight: bold;">{format_price(obj.price)}</span> تومان'
-        )
-    price_display.short_description = '💰 قیمت'
-    
-    def stock_status_aggregated(self, obj):
-        """وضعیت موجودی تجمیعی"""
-        total = obj.total_stock
-        colors_count = obj.colors.count()
-        sizes_count = ProductSize.objects.filter(color__product=obj).count()
+    max_discount_amount = models.DecimalField(max_digits=10, decimal_places=0, blank=True, null=True)
+    valid_from = models.DateTimeField(null=True, blank=True)
+    valid_to = models.DateTimeField(null=True, blank=True)
+    used_count = models.PositiveIntegerField(default=0)
+    max_uses = models.PositiveIntegerField(default=1)
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return self.code
+
+    def is_valid(self):
+        """بررسی اعتبار کوپن با هندل کردن مقادیر None"""
+        now = timezone.now()
         
-        if total > 100:
-            color, text, icon = '#28a745', 'فوق‌العاده', '🟢'
-        elif total > 50:
-            color, text, icon = '#28a745', 'عالی', '🟢'
-        elif total > 20:
-            color, text, icon = '#17a2b8', 'خوب', '🔵'
-        elif total > 10:
-            color, text, icon = '#ffc107', 'متوسط', '🟡'
-        elif total > 0:
-            color, text, icon = '#fd7e14', 'کم', '🟠'
-        else:
-            color, text, icon = '#dc3545', 'ناموجود', '🔴'
-        
-        return mark_safe(
-            f'<span style="color: {color}; font-weight: bold;">{icon} {text}</span><br>'
-            f'<small style="color: #6c757d;">{colors_count} رنگ - {sizes_count} سایز</small>'
-        )
-    stock_status_aggregated.short_description = '📊 وضعیت موجودی'
-    
-    def rating_display(self, obj):
-        """نمایش امتیاز با ستاره"""
-        rating = obj.average_rating
-        count = obj.reviews_count
-        
-        if rating and rating > 0:
-            stars = '★' * int(rating) + '☆' * (5 - int(rating))
-            return mark_safe(
-                f'<span style="color: #ffc107; font-size: 16px;">{stars}</span> '
-                f'<span style="color: #6c757d;">({rating:.1f} - {count} نظر)</span>'
-            )
-        return mark_safe('<span style="color: #999;">⭐ بدون امتیاز</span>')
-    rating_display.short_description = '⭐ امتیاز'
-    
-    def status_badges(self, obj):
-        """برچسب‌های وضعیت"""
-        badges = []
-        
-        if obj.is_featured:
-            badges.append('<span style="background: #9c27b0; color: white; padding: 3px 10px; border-radius: 15px; margin: 2px; display: inline-block;">✨ ویژه</span>')
-        if not obj.is_active:
-            badges.append('<span style="background: #dc3545; color: white; padding: 3px 10px; border-radius: 15px; margin: 2px; display: inline-block;">⚫ غیرفعال</span>')
-        if obj.view_count > 1000:
-            badges.append('<span style="background: #fd7e14; color: white; padding: 3px 10px; border-radius: 15px; margin: 2px; display: inline-block;">👁️ پربازدید</span>')
-        if obj.sold_count > 100:
-            badges.append('<span style="background: #28a745; color: white; padding: 3px 10px; border-radius: 15px; margin: 2px; display: inline-block;">🔥 پرفروش</span>')
+        if self.valid_from is None or self.valid_to is None:
+            return False
             
-        return mark_safe(' '.join(badges)) if badges else '-'
-    status_badges.short_description = '🏷️ برچسب‌ها'
-    
-    def created_at_jalali(self, obj):
-        return self.get_jalali_datetime(obj.created_at)
-    created_at_jalali.short_description = '📅 تاریخ ثبت'
-    created_at_jalali.admin_order_field = 'created_at'
-    
-    actions = ['duplicate_products', 'toggle_active', 'toggle_featured']
-    
-    def duplicate_products(self, request, queryset):
-        """کپی کردن محصولات انتخاب شده"""
-        for product in queryset:
-            # کپی محصول
-            product.pk = None
-            product.name = f'{product.name} (کپی)'
-            product.slug = f'{product.slug}-copy'
-            product.save()
-            
-            # کپی رنگ‌ها
-            for color in product.colors.all():
-                color.pk = None
-                color.product = product
-                color.save()
-                
-                # کپی سایزها
-                for size in color.sizes.all():
-                    size.pk = None
-                    size.color = color
-                    size.save()
-        
-        self.message_user(
-            request,
-            f'✅ {queryset.count()} محصول با موفقیت کپی شد.',
-            messages.SUCCESS
-        )
-    duplicate_products.short_description = '📋 کپی کردن محصولات انتخاب شده'
-    
-    def toggle_active(self, request, queryset):
-        """تغییر وضعیت فعال/غیرفعال"""
-        count = queryset.count()
-        for product in queryset:
-            product.is_active = not product.is_active
-            product.save()
-        self.message_user(request, f'🔄 وضعیت {count} محصول تغییر کرد.', messages.SUCCESS)
-    toggle_active.short_description = '🔄 تغییر وضعیت فعال/غیرفعال'
-    
-    def toggle_featured(self, request, queryset):
-        """تغییر وضعیت ویژه"""
-        count = queryset.count()
-        for product in queryset:
-            product.is_featured = not product.is_featured
-            product.save()
-        self.message_user(request, f'✨ وضعیت ویژه {count} محصول تغییر کرد.', messages.SUCCESS)
-    toggle_featured.short_description = '⭐ تغییر وضعیت ویژه'
-
-
-@admin.register(ProductColor)
-class ProductColorAdmin(admin.ModelAdmin, JalaliDateMixin, StockStatusMixin):
-    """مدیریت رنگ‌های محصول"""
-    
-    list_display = [
-        'name', 'product_link', 'color_preview_large', 'sizes_count',
-        'total_stock_detailed', 'order', 'updated_at_short'
-    ]
-    list_filter = ['product__category', 'product']
-    search_fields = ['name', 'product__name']
-    inlines = [ProductSizeInline]
-    ordering = ['product', 'order', 'name']
-    list_editable = ['order']
-    list_per_page = 25
-    
-    fieldsets = (
-        ('🎨 اطلاعات رنگ', {
-            'fields': ('product', 'name', 'hex_code', 'color_preview_large', 'order')
-        }),
-        ('📊 آمار', {
-            'fields': ('sizes_count', 'total_stock_detailed'),
-        }),
-        ('📅 تاریخ', {
-            'fields': ('created_at', 'updated_at'),
-            'classes': ('collapse',)
-        }),
-    )
-    readonly_fields = ['created_at', 'updated_at', 'color_preview_large', 'sizes_count', 'total_stock_detailed']
-    
-    def get_queryset(self, request):
-        return super().get_queryset(request).prefetch_related('sizes')
-    
-    def product_link(self, obj):
-        url = reverse('admin:api_product_change', args=[obj.product.id])
-        return mark_safe(f'<a href="{url}" style="font-weight: bold;">{obj.product.name}</a>')
-    product_link.short_description = '📦 محصول'
-    product_link.admin_order_field = 'product__name'
-    
-    def color_preview_large(self, obj):
-        if obj.hex_code:
-            return mark_safe(
-                f'<div style="display: flex; align-items: center;">'
-                f'<div style="width: 40px; height: 40px; background-color: {obj.hex_code}; '
-                f'border-radius: 8px; border: 2px solid #fff; box-shadow: 0 0 0 1px #ddd;"></div>'
-                f'<span style="margin-right: 10px; font-family: monospace;">{obj.hex_code}</span>'
-                f'</div>'
-            )
-        return '-'
-    color_preview_large.short_description = '🎯 پیش‌نمایش رنگ'
-    
-    def sizes_count(self, obj):
-        count = obj.sizes.count()
-        if count:
-            return mark_safe(f'<span style="background: #6c757d; color: white; padding: 3px 12px; border-radius: 20px;">{count} سایز</span>')
-        return '-'
-    sizes_count.short_description = '📏 تعداد سایزها'
-    
-    def total_stock_detailed(self, obj):
-        sizes = obj.sizes.all()
-        if sizes:
-            total = sum(s.stock for s in sizes)
-            details = ', '.join([f'{s.size}: {s.stock}' for s in sizes[:3]])
-            if sizes.count() > 3:
-                details += ' و ...'
-            
-            return mark_safe(
-                f'<span style="font-weight: bold;">{total} عدد</span><br>'
-                f'<small style="color: #6c757d;">{details}</small>'
-            )
-        return '-'
-    total_stock_detailed.short_description = '📦 جزئیات موجودی'
-    
-    def updated_at_short(self, obj):
-        return self.get_jalali_date(obj.updated_at)
-    updated_at_short.short_description = '📅 آخرین بروزرسانی'
-
-
-@admin.register(ProductSize)
-class ProductSizeAdmin(admin.ModelAdmin, JalaliDateMixin, StockStatusMixin):
-    """مدیریت سایزهای محصول"""
-    
-    list_display = [
-        'product_link', 'color_link', 'size', 'price_formatted',
-        'stock_with_badge', 'sku_short', 'status_badge', 'updated_at_short'
-    ]
-    list_filter = ['color__product', 'color__name', 'size', 'color__product__category']
-    search_fields = ['color__product__name', 'color__name', 'size', 'sku']
-    ordering = ['color__product', 'color__name', 'size']
-    list_editable = ['price', 'stock']
-    list_per_page = 50
-    save_on_top = True
-    
-    fieldsets = (
-        ('📏 اطلاعات سایز', {
-            'fields': ('color', 'size', 'price', 'stock', 'sku'),
-            'classes': ('wide',)
-        }),
-        ('📊 وضعیت', {
-            'fields': ('status_badge',),
-        }),
-        ('📅 تاریخ', {
-            'fields': ('created_at', 'updated_at'),
-            'classes': ('collapse',)
-        }),
-    )
-    readonly_fields = ['created_at', 'updated_at', 'sku', 'status_badge']
-    
-    def get_queryset(self, request):
-        return super().get_queryset(request).select_related(
-            'color', 'color__product', 'color__product__category'
-        )
-    
-    def product_link(self, obj):
-        url = reverse('admin:api_product_change', args=[obj.color.product.id])
-        return mark_safe(f'<a href="{url}" style="font-weight: 600;">{obj.color.product.name}</a>')
-    product_link.short_description = '📦 محصول'
-    product_link.admin_order_field = 'color__product__name'
-    
-    def color_link(self, obj):
-        url = reverse('admin:api_productcolor_change', args=[obj.color.id])
-        color_preview = ''
-        if obj.color.hex_code:
-            color_preview = (
-                f'<span style="display: inline-block; width: 12px; height: 12px; '
-                f'background-color: {obj.color.hex_code}; border-radius: 4px; '
-                f'margin-left: 5px; border: 1px solid #ddd; vertical-align: middle;"></span> '
-            )
-        return mark_safe(f'{color_preview}<a href="{url}" style="vertical-align: middle;">{obj.color.name}</a>')
-    color_link.short_description = '🎨 رنگ'
-    
-    def price_formatted(self, obj):
-        return mark_safe(
-            f'<span style="direction: ltr; display: inline-block; font-family: monospace; '
-            f'font-weight: bold; color: #28a745;">{format_price(obj.price)}</span> تومان'
-        )
-    price_formatted.short_description = '💰 قیمت'
-    
-    def stock_with_badge(self, obj):
-        if obj.stock > 20:
-            return mark_safe(f'<span style="background: #28a745; color: white; padding: 3px 10px; border-radius: 15px;">✅ {obj.stock} عدد</span>')
-        elif obj.stock > 10:
-            return mark_safe(f'<span style="background: #17a2b8; color: white; padding: 3px 10px; border-radius: 15px;">🟢 {obj.stock} عدد</span>')
-        elif obj.stock > 5:
-            return mark_safe(f'<span style="background: #ffc107; color: black; padding: 3px 10px; border-radius: 15px;">🟡 {obj.stock} عدد</span>')
-        elif obj.stock > 0:
-            return mark_safe(f'<span style="background: #fd7e14; color: white; padding: 3px 10px; border-radius: 15px;">🟠 {obj.stock} عدد</span>')
-        else:
-            return mark_safe('<span style="background: #dc3545; color: white; padding: 3px 10px; border-radius: 15px;">❌ ناموجود</span>')
-    stock_with_badge.short_description = '📦 موجودی'
-    
-    def sku_short(self, obj):
-        if obj.sku:
-            return mark_safe(f'<span style="font-family: monospace; color: #6c757d;">{obj.sku}</span>')
-        return '-'
-    sku_short.short_description = '🏷️ SKU'
-    
-    def status_badge(self, obj):
-        if obj.stock > 20:
-            return mark_safe('<span style="background: #28a745; color: white; padding: 4px 12px; border-radius: 20px;">✅ موجود</span>')
-        elif obj.stock > 10:
-            return mark_safe('<span style="background: #17a2b8; color: white; padding: 4px 12px; border-radius: 20px;">🟢 خوب</span>')
-        elif obj.stock > 5:
-            return mark_safe('<span style="background: #ffc107; color: black; padding: 4px 12px; border-radius: 20px;">🟡 محدود</span>')
-        elif obj.stock > 0:
-            return mark_safe('<span style="background: #fd7e14; color: white; padding: 4px 12px; border-radius: 20px;">🟠 کم</span>')
-        else:
-            return mark_safe('<span style="background: #dc3545; color: white; padding: 4px 12px; border-radius: 20px;">❌ ناموجود</span>')
-    status_badge.short_description = '⚡ وضعیت'
-    
-    def updated_at_short(self, obj):
-        return self.get_jalali_date(obj.updated_at)
-    updated_at_short.short_description = '📅 بروزرسانی'
-    
-    actions = ['increase_stock', 'decrease_stock']
-    
-    def increase_stock(self, request, queryset):
-        """افزایش موجودی"""
-        amount = request.POST.get('amount', 10)
-        try:
-            amount = int(amount)
-            updated = queryset.update(stock=models.F('stock') + amount)
-            self.message_user(
-                request,
-                f'✅ موجودی {updated} سایز به مقدار {amount} عدد افزایش یافت.',
-                messages.SUCCESS
-            )
-        except ValueError:
-            self.message_user(request, '❌ لطفاً یک عدد معتبر وارد کنید.', messages.ERROR)
-    increase_stock.short_description = '📈 افزایش موجودی'
-    
-    def decrease_stock(self, request, queryset):
-        """کاهش موجودی"""
-        amount = request.POST.get('amount', 5)
-        try:
-            amount = int(amount)
-            for item in queryset:
-                if item.stock >= amount:
-                    item.stock -= amount
-                    item.save()
-            self.message_user(
-                request,
-                f'✅ موجودی {queryset.count()} سایز به مقدار {amount} عدد کاهش یافت.',
-                messages.SUCCESS
-            )
-        except ValueError:
-            self.message_user(request, '❌ لطفاً یک عدد معتبر وارد کنید.', messages.ERROR)
-    decrease_stock.short_description = '📉 کاهش موجودی'
-
-
-@admin.register(ProductImage)
-class ProductImageAdmin(admin.ModelAdmin, JalaliDateMixin):
-    """مدیریت تصاویر محصول"""
-    
-    list_display = ['product_link', 'image_thumbnail', 'alt_text', 'order', 'created_at_short']
-    list_filter = ['product__category', 'product']
-    search_fields = ['product__name', 'alt_text']
-    ordering = ['product', 'order']
-    list_editable = ['order', 'alt_text']
-    list_per_page = 50
-    
-    fieldsets = (
-        ('🖼️ اطلاعات تصویر', {
-            'fields': ('product', 'image', 'image_preview_large', 'alt_text', 'order')
-        }),
-        ('📅 تاریخ', {
-            'fields': ('created_at',),
-            'classes': ('collapse',)
-        }),
-    )
-    readonly_fields = ['created_at', 'image_preview_large']
-    
-    def product_link(self, obj):
-        url = reverse('admin:api_product_change', args=[obj.product.id])
-        return mark_safe(f'<a href="{url}">{obj.product.name}</a>')
-    product_link.short_description = '📦 محصول'
-    
-    def image_thumbnail(self, obj):
-        if obj.image:
-            return mark_safe(
-                f'<img src="{obj.image.url}" style="width: 50px; height: 50px; '
-                f'object-fit: cover; border-radius: 8px; border: 1px solid #dee2e6;" />'
-            )
-        return '-'
-    image_thumbnail.short_description = '🖼️ تصویر'
-    
-    def image_preview_large(self, obj):
-        if obj.image:
-            return mark_safe(
-                f'<img src="{obj.image.url}" style="max-width: 300px; max-height: 200px; '
-                f'object-fit: contain; border-radius: 8px; border: 1px solid #dee2e6;" />'
-            )
-        return '-'
-    image_preview_large.short_description = '👁️ پیش‌نمایش بزرگ'
-    
-    def created_at_short(self, obj):
-        return self.get_jalali_date(obj.created_at)
-    created_at_short.short_description = '📅 تاریخ'
-
-
-@admin.register(CartItem)
-class CartItemAdmin(admin.ModelAdmin, JalaliDateMixin):
-    """مدیریت آیتم‌های سبد خرید"""
-    
-    list_display = [
-        'user_link', 'product_info', 'quantity_badge',
-        'unit_price_display', 'total_price_display', 'created_at_short'
-    ]
-    list_filter = ['user', 'created_at']
-    search_fields = ['user__username', 'user__email', 'product_size__color__product__name']
-    ordering = ['-created_at']
-    list_per_page = 50
-    date_hierarchy = 'created_at'
-    
-    fieldsets = (
-        ('👤 اطلاعات کاربر', {
-            'fields': ('user',)
-        }),
-        ('🛒 اطلاعات محصول', {
-            'fields': ('product_size', 'quantity', 'total_price_display'),
-        }),
-        ('📅 تاریخ', {
-            'fields': ('created_at', 'updated_at'),
-            'classes': ('collapse',)
-        }),
-    )
-    readonly_fields = ['created_at', 'updated_at', 'total_price_display']
-    
-    def user_link(self, obj):
-        url = reverse('admin:auth_user_change', args=[obj.user.id])
-        return mark_safe(f'<a href="{url}">{obj.user.username}</a>')
-    user_link.short_description = '👤 کاربر'
-    
-    def product_info(self, obj):
-        return mark_safe(
-            f'<span style="font-weight: bold;">{obj.product_size.color.product.name}</span><br>'
-            f'<small style="color: #6c757d;">{obj.product_size.color.name} - {obj.product_size.size}</small>'
-        )
-    product_info.short_description = '📦 محصول'
-    
-    def quantity_badge(self, obj):
-        if obj.quantity > 5:
-            color = '#28a745'
-        elif obj.quantity > 2:
-            color = '#17a2b8'
-        else:
-            color = '#6c757d'
-        return mark_safe(f'<span style="background: {color}; color: white; padding: 4px 12px; border-radius: 20px;">{obj.quantity} عدد</span>')
-    quantity_badge.short_description = '🔢 تعداد'
-    
-    def unit_price_display(self, obj):
-        return mark_safe(
-            f'<span style="font-family: monospace;">{format_price(obj.product_size.price)}</span> تومان'
-        )
-    unit_price_display.short_description = '💰 قیمت واحد'
-    
-    def total_price_display(self, obj):
-        return mark_safe(
-            f'<span style="font-family: monospace; font-weight: bold; color: #28a745;">'
-            f'{format_price(obj.total_price)}</span> تومان'
-        )
-    total_price_display.short_description = '💵 قیمت کل'
-    
-    def created_at_short(self, obj):
-        return self.get_jalali_datetime(obj.created_at)
-    created_at_short.short_description = '📅 تاریخ'
-
-
-@admin.register(ProductReview)
-class ProductReviewAdmin(admin.ModelAdmin, JalaliDateMixin):
-    """مدیریت نظرات محصولات"""
-    
-    list_display = [
-        'product_link', 'user_link', 'rating_stars', 'comment_short',
-        'helpful_count', 'is_approved', 'approval_status', 'created_at_short'
-    ]
-    list_filter = ['is_approved', 'rating', 'created_at']
-    search_fields = ['product__name', 'user__username', 'comment']
-    ordering = ['-created_at']
-    list_per_page = 50
-    date_hierarchy = 'created_at'
-    list_editable = ['is_approved']
-    
-    fieldsets = (
-        ('📝 اطلاعات نظر', {
-            'fields': ('product', 'user', 'rating', 'comment')
-        }),
-        ('⚙️ وضعیت', {
-            'fields': ('is_approved', 'helpful_count', 'rating_stars_large'),
-        }),
-        ('📅 تاریخ', {
-            'fields': ('created_at', 'updated_at'),
-            'classes': ('collapse',)
-        }),
-    )
-    readonly_fields = ['created_at', 'updated_at', 'helpful_count', 'rating_stars_large']
-    
-    def product_link(self, obj):
-        url = reverse('admin:api_product_change', args=[obj.product.id])
-        return mark_safe(f'<a href="{url}">{obj.product.name[:30]}</a>')
-    product_link.short_description = '📦 محصول'
-    
-    def user_link(self, obj):
-        url = reverse('admin:auth_user_change', args=[obj.user.id])
-        return mark_safe(f'<a href="{url}">{obj.user.username}</a>')
-    user_link.short_description = '👤 کاربر'
-    
-    def rating_stars(self, obj):
-        if obj.rating:
-            stars = '★' * obj.rating + '☆' * (5 - obj.rating)
-            return mark_safe(f'<span style="color: #ffc107; font-size: 16px;">{stars}</span>')
-        return '-'
-    rating_stars.short_description = '⭐ امتیاز'
-    
-    def rating_stars_large(self, obj):
-        if obj.rating:
-            stars = '★' * obj.rating + '☆' * (5 - obj.rating)
-            return mark_safe(
-                f'<span style="color: #ffc107; font-size: 24px;">{stars}</span><br>'
-                f'<span style="color: #6c757d;">{obj.rating} از 5</span>'
-            )
-        return '-'
-    rating_stars_large.short_description = '⭐ امتیاز'
-    
-    def comment_short(self, obj):
-        if obj.comment:
-            return obj.comment[:50] + '...' if len(obj.comment) > 50 else obj.comment
-        return '-'
-    comment_short.short_description = '💬 نظر'
-    
-    def approval_status(self, obj):
-        if obj.is_approved:
-            return mark_safe('<span style="background: #28a745; color: white; padding: 4px 12px; border-radius: 20px;">✅ تایید شده</span>')
-        return mark_safe('<span style="background: #ffc107; color: black; padding: 4px 12px; border-radius: 20px;">⏳ در انتظار</span>')
-    approval_status.short_description = '⚡ وضعیت'
-    
-    def created_at_short(self, obj):
-        return self.get_jalali_datetime(obj.created_at)
-    created_at_short.short_description = '📅 تاریخ'
-    
-    actions = ['approve_reviews', 'unapprove_reviews']
-    
-    def approve_reviews(self, request, queryset):
-        updated = queryset.update(is_approved=True)
-        self.message_user(request, f'✅ {updated} دیدگاه تایید شد.', messages.SUCCESS)
-    approve_reviews.short_description = '✅ تایید دیدگاه‌ها'
-    
-    def unapprove_reviews(self, request, queryset):
-        updated = queryset.update(is_approved=False)
-        self.message_user(request, f'❌ {updated} دیدگاه رد شد.', messages.SUCCESS)
-    unapprove_reviews.short_description = '❌ رد دیدگاه‌ها'
-
-
-@admin.register(Favorite)
-class FavoriteAdmin(admin.ModelAdmin, JalaliDateMixin):
-    """مدیریت علاقه‌مندی‌ها"""
-    
-    list_display = ['user_link', 'product_link', 'favorite_since', 'created_at_short']
-    list_filter = ['user', 'created_at']
-    search_fields = ['user__username', 'product__name']
-    ordering = ['-created_at']
-    list_per_page = 50
-    date_hierarchy = 'created_at'
-    
-    fieldsets = (
-        ('❤️ اطلاعات علاقه‌مندی', {
-            'fields': ('user', 'product')
-        }),
-        ('📅 تاریخ', {
-            'fields': ('created_at',),
-            'classes': ('collapse',)
-        }),
-    )
-    readonly_fields = ['created_at']
-    
-    def user_link(self, obj):
-        url = reverse('admin:auth_user_change', args=[obj.user.id])
-        return mark_safe(f'<a href="{url}">{obj.user.username}</a>')
-    user_link.short_description = '👤 کاربر'
-    
-    def product_link(self, obj):
-        url = reverse('admin:api_product_change', args=[obj.product.id])
-        return mark_safe(f'<a href="{url}">{obj.product.name}</a>')
-    product_link.short_description = '📦 محصول'
-    
-    def favorite_since(self, obj):
-        days = (timezone.now() - obj.created_at).days
-        if days == 0:
-            return 'امروز'
-        elif days == 1:
-            return 'دیروز'
-        else:
-            return f'{days} روز پیش'
-    favorite_since.short_description = '⏳ زمان افزودن'
-    
-    def created_at_short(self, obj):
-        return self.get_jalali_datetime(obj.created_at)
-    created_at_short.short_description = '📅 تاریخ'
-
-
-@admin.register(Coupon)
-class CouponAdmin(admin.ModelAdmin, JalaliDateMixin):
-    """مدیریت کوپن‌های تخفیف"""
-    
-    list_display = [
-        'code', 'discount_display', 'valid_period', 'usage_stats',
-        'status_badge', 'is_active', 'created_at_short'
-    ]
-    list_filter = ['is_active', 'valid_from', 'valid_to']
-    search_fields = ['code']
-    ordering = ['-created_at']
-    list_per_page = 25
-    list_editable = ['is_active']
-    
-    fieldsets = (
-        ('🏷️ اطلاعات کوپن', {
-            'fields': ('code', 'discount_percent', 'max_discount_amount')
-        }),
-        ('📅 مدت اعتبار', {
-            'fields': ('valid_from', 'valid_to', 'is_valid_display'),
-        }),
-        ('📊 محدودیت‌ها', {
-            'fields': ('max_uses', 'used_count', 'is_active'),
-        }),
-        ('📅 تاریخ', {
-            'fields': ('created_at',),
-            'classes': ('collapse',)
-        }),
-    )
-    readonly_fields = ['created_at', 'used_count', 'is_valid_display']
-    
-    def discount_display(self, obj):
-        if obj.max_discount_amount:
-            return f'{obj.discount_percent}% (حداکثر {format_price(obj.max_discount_amount)} تومان)'
-        return f'{obj.discount_percent}%'
-    discount_display.short_description = '💰 تخفیف'
-    
-    def valid_period(self, obj):
-        if obj.valid_from and obj.valid_to:
-            return (
-                f'{obj.valid_from.strftime("%Y/%m/%d")} '
-                f'تا {obj.valid_to.strftime("%Y/%m/%d")}'
-            )
-        return '⚠️ تاریخ مشخص نشده'
-    valid_period.short_description = '📆 مدت اعتبار'
-    
-    def usage_stats(self, obj):
-        if obj.max_uses > 0:
-            percentage = (obj.used_count / obj.max_uses) * 100
-            color = '#28a745' if percentage < 80 else '#dc3545'
-            return mark_safe(
-                f'<span style="font-weight: bold;">{obj.used_count}/{obj.max_uses}</span><br>'
-                f'<div style="width: 80px; background: #e9ecef; border-radius: 10px; overflow: hidden; margin-top: 5px;">'
-                f'<div style="width: {percentage}%; background: {color}; height: 4px;"></div>'
-                f'</div>'
-            )
-        return f'{obj.used_count}/∞'
-    usage_stats.short_description = '📊 مصرف'
-    
-    def status_badge(self, obj):
-        if obj.is_valid():
-            return mark_safe('<span style="background: #28a745; color: white; padding: 4px 12px; border-radius: 20px;">✅ فعال</span>')
-        return mark_safe('<span style="background: #dc3545; color: white; padding: 4px 12px; border-radius: 20px;">❌ غیرفعال</span>')
-    status_badge.short_description = '⚡ وضعیت'
-    
-    def is_valid_display(self, obj):
-        if not obj.valid_from or not obj.valid_to:
-            return mark_safe('<span style="color: #ffc107;">⚠️ تاریخ اعتبار مشخص نشده</span>')
-        
-        if obj.is_valid():
-            return mark_safe('<span style="color: #28a745;">✅ این کوپن معتبر است</span>')
-        
-        return mark_safe('<span style="color: #dc3545;">❌ این کوپن منقضی شده یا غیرفعال است</span>')
-    is_valid_display.short_description = '🔍 بررسی اعتبار'
-    
-    def created_at_short(self, obj):
-        return self.get_jalali_date(obj.created_at)
-    created_at_short.short_description = '📅 تاریخ ایجاد'
-    
-    actions = ['activate_coupons', 'deactivate_coupons']
-    
-    def activate_coupons(self, request, queryset):
-        updated = queryset.update(is_active=True)
-        self.message_user(request, f'✅ {updated} کوپن فعال شد.', messages.SUCCESS)
-    activate_coupons.short_description = '✅ فعال کردن کوپن‌ها'
-    
-    def deactivate_coupons(self, request, queryset):
-        updated = queryset.update(is_active=False)
-        self.message_user(request, f'❌ {updated} کوپن غیرفعال شد.', messages.SUCCESS)
-    deactivate_coupons.short_description = '❌ غیرفعال کردن کوپن‌ها'
-
-
-@admin.register(EmailVerificationCode)
-class EmailVerificationCodeAdmin(admin.ModelAdmin, JalaliDateMixin):
-    """مدیریت کدهای تایید ایمیل"""
-    
-    list_display = [
-        'email', 'code', 'usage_status', 'expiry_status',
-        'is_used', 'created_at_short'
-    ]
-    list_filter = ['is_used', 'created_at']
-    search_fields = ['email', 'code']
-    ordering = ['-created_at']
-    list_per_page = 50
-    date_hierarchy = 'created_at'
-    list_editable = ['is_used']
-    
-    fieldsets = (
-        ('📧 اطلاعات ایمیل', {
-            'fields': ('email', 'code', 'is_used')
-        }),
-        ('🔍 وضعیت', {
-            'fields': ('expiry_status_display', 'created_at'),
-        }),
-    )
-    readonly_fields = ['created_at', 'expiry_status_display']
-    
-    def usage_status(self, obj):
-        if obj.is_used:
-            return mark_safe('<span style="background: #6c757d; color: white; padding: 4px 12px; border-radius: 20px;">✅ استفاده شده</span>')
-        return mark_safe('<span style="background: #28a745; color: white; padding: 4px 12px; border-radius: 20px;">🆕 استفاده نشده</span>')
-    usage_status.short_description = '📌 وضعیت مصرف'
-    
-    def expiry_status(self, obj):
-        if not obj.created_at:
-            return mark_safe('<span style="color: #ffc107;">⚠️ تاریخ نامشخص</span>')
-        
-        if obj.is_expired():
-            return mark_safe('<span style="color: #dc3545;">❌ منقضی شده</span>')
-        
-        remaining = max(0, (obj.created_at + timedelta(minutes=10) - timezone.now()).seconds // 60)
-        return mark_safe(f'<span style="color: #28a745;">✅ معتبر ({remaining} دقیقه)</span>')
-    expiry_status.short_description = '⏳ انقضا'
-    
-    def expiry_status_display(self, obj):
-        if not obj.created_at:
-            return mark_safe('<span style="color: #ffc107;">⚠️ تاریخ ایجاد کد نامشخص است</span>')
-        
-        expiration_time = obj.created_at + timedelta(minutes=10)
-        
-        if obj.is_expired():
-            return mark_safe(
-                f'<span style="color: #dc3545;">❌ این کد در '
-                f'{expiration_time.strftime("%Y/%m/%d %H:%M")} منقضی شده است</span>'
-            )
-        
-        remaining = max(0, (expiration_time - timezone.now()).seconds // 60)
-        return mark_safe(
-            f'<span style="color: #28a745;">✅ این کد تا '
-            f'{expiration_time.strftime("%Y/%m/%d %H:%M")} معتبر است '
-            f'({remaining} دقیقه باقی)</span>'
-        )
-    expiry_status_display.short_description = '🔍 وضعیت انقضا'
-    
-    def created_at_short(self, obj):
-        return self.get_jalali_datetime(obj.created_at)
-    created_at_short.short_description = '📅 تاریخ ایجاد'
+        return (self.is_active and 
+                self.valid_from <= now <= self.valid_to and 
+                self.used_count < self.max_uses)

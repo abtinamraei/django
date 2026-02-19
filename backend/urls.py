@@ -4,12 +4,8 @@ from rest_framework_simplejwt.views import (
     TokenObtainPairView,
     TokenRefreshView,
 )
-from .views import home  # مسیر ویو اصلی سایت
 
 urlpatterns = [
-    # مسیر صفحه اصلی
-    path('', home, name='home'),
-
     # مسیر ادمین
     path('admin/', admin.site.urls),
 
