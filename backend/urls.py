@@ -1,11 +1,19 @@
 from django.contrib import admin
 from django.urls import path, include
+from django.http import HttpResponse  # این خط رو اضافه کن
 from rest_framework_simplejwt.views import (
     TokenObtainPairView,
     TokenRefreshView,
 )
 
+# این تابع رو اضافه کن
+def home(request):
+    return HttpResponse("✅ API is running - Django Backend")
+
 urlpatterns = [
+    # صفحه اصلی - این خط رو اضافه کن
+    path('', home, name='home'),
+    
     # مسیر ادمین
     path('admin/', admin.site.urls),
 
