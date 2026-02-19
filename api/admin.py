@@ -17,9 +17,12 @@ from .models import (
 # UTILITY FUNCTIONS
 # ============================================================================
 
-def format_price(price: float) -> str:
+def format_price(price) -> str:
     """فرمت‌سازی قیمت با جداکننده هزارگان"""
-    return f"{price:,.0f}"
+    try:
+        return f"{int(price):,}"
+    except:
+        return str(price)
 
 
 def get_status_badge(text: str, color: str, icon: str = "") -> str:
@@ -102,24 +105,16 @@ class ProductSizeInline(admin.TabularInline):
     
     def status_display(self, obj):
         """نمایش وضعیت موجودی با رنگ مناسب"""
-        status_map = {
-            range(21, 1000): ('success', '✅ موجود'),
-            range(11, 21): ('info', '🟢 خوب'),
-            range(6, 11): ('warning', '🟡 محدود'),
-            range(1, 6): ('orange', '🟠 کم'),
-        }
-        
-        for stock_range, (color, text) in status_map.items():
-            if obj.stock in stock_range:
-                return mark_safe(get_status_badge(f"{text} ({obj.stock})", color))
-        
-        if obj.stock > 100:
-            return mark_safe(get_status_badge(f"✅ فوق‌العاده ({obj.stock})", 'success'))
-        elif obj.stock <= 0:
-            return mark_safe(get_status_badge("❌ ناموجود", 'danger'))
-        
-        return mark_safe(get_status_badge(f"⚪ {obj.stock} عدد", 'secondary'))
-    
+        if obj.stock > 20:
+            return mark_safe(f'<span style="background: #28a745; color: white; padding: 3px 10px; border-radius: 15px;">✅ موجود ({obj.stock})</span>')
+        elif obj.stock > 10:
+            return mark_safe(f'<span style="background: #17a2b8; color: white; padding: 3px 10px; border-radius: 15px;">🟢 خوب ({obj.stock})</span>')
+        elif obj.stock > 5:
+            return mark_safe(f'<span style="background: #ffc107; color: black; padding: 3px 10px; border-radius: 15px;">🟡 محدود ({obj.stock})</span>')
+        elif obj.stock > 0:
+            return mark_safe(f'<span style="background: #fd7e14; color: white; padding: 3px 10px; border-radius: 15px;">🟠 کم ({obj.stock})</span>')
+        else:
+            return mark_safe('<span style="background: #dc3545; color: white; padding: 3px 10px; border-radius: 15px;">❌ ناموجود</span>')
     status_display.short_description = 'وضعیت'
     
     def created_at_short(self, obj):
@@ -156,7 +151,7 @@ class ProductColorInline(admin.TabularInline):
         """تعداد سایزهای هر رنگ"""
         count = obj.sizes.count()
         if count:
-            return mark_safe(get_status_badge(f"{count} سایز", 'secondary'))
+            return mark_safe(f'<span style="background: #6c757d; color: white; padding: 2px 8px; border-radius: 12px;">{count} سایز</span>')
         return '-'
     sizes_count.short_description = '📊 تعداد سایزها'
     
@@ -164,12 +159,12 @@ class ProductColorInline(admin.TabularInline):
         """مجموع موجودی هر رنگ"""
         total = sum(size.stock for size in obj.sizes.all())
         if total > 50:
-            return mark_safe(get_status_badge(f"{total} عدد", 'success'))
+            return mark_safe(f'<span style="color: #28a745; font-weight: bold;">{total} عدد</span>')
         elif total > 20:
-            return mark_safe(get_status_badge(f"{total} عدد", 'info'))
+            return mark_safe(f'<span style="color: #17a2b8; font-weight: bold;">{total} عدد</span>')
         elif total > 0:
-            return mark_safe(get_status_badge(f"{total} عدد", 'warning'))
-        return mark_safe(get_status_badge("ناموجود", 'danger'))
+            return mark_safe(f'<span style="color: #ffc107; font-weight: bold;">{total} عدد</span>')
+        return mark_safe('<span style="color: #dc3545; font-weight: bold;">ناموجود</span>')
     total_stock_display.short_description = '📦 مجموع موجودی'
 
 
@@ -265,7 +260,7 @@ class ProductAdmin(admin.ModelAdmin, JalaliDateMixin, StockStatusMixin):
     
     fieldsets = (
         ('📌 اطلاعات اصلی', {
-            'fields': ('category', 'name', 'slug', 'description', 'base_price'),
+            'fields': ('category', 'name', 'slug', 'description', 'price'),  # تغییر base_price به price
             'classes': ('wide',)
         }),
         ('🖼️ تصاویر', {
@@ -328,13 +323,13 @@ class ProductAdmin(admin.ModelAdmin, JalaliDateMixin, StockStatusMixin):
     def price_display(self, obj):
         """نمایش قیمت با فرمت مناسب"""
         min_price = obj.min_price
-        if min_price != obj.base_price:
+        if min_price != obj.price:  # تغییر base_price به price
             return mark_safe(
                 f'<span style="color: #28a745; font-weight: bold;">{format_price(min_price)}</span> - '
-                f'<span style="color: #6c757d;">{format_price(obj.base_price)}</span> تومان'
+                f'<span style="color: #6c757d;">{format_price(obj.price)}</span> تومان'
             )
         return mark_safe(
-            f'<span style="color: #28a745; font-weight: bold;">{format_price(obj.base_price)}</span> تومان'
+            f'<span style="color: #28a745; font-weight: bold;">{format_price(obj.price)}</span> تومان'
         )
     price_display.short_description = '💰 قیمت'
     
@@ -447,7 +442,7 @@ class ProductAdmin(admin.ModelAdmin, JalaliDateMixin, StockStatusMixin):
             percent = int(percent)
             if 0 < percent <= 100:
                 for product in queryset:
-                    product.base_price = product.base_price * (100 - percent) / 100
+                    product.price = product.price * (100 - percent) / 100  # تغییر base_price به price
                     product.save()
                 self.message_user(
                     request,
@@ -515,7 +510,7 @@ class ProductColorAdmin(admin.ModelAdmin, JalaliDateMixin, StockStatusMixin):
     def sizes_count(self, obj):
         count = obj.sizes.count()
         if count:
-            return mark_safe(get_status_badge(f"{count} سایز", 'secondary'))
+            return mark_safe(f'<span style="background: #6c757d; color: white; padding: 3px 12px; border-radius: 20px;">{count} سایز</span>')
         return '-'
     sizes_count.short_description = '📏 تعداد سایزها'
     
@@ -527,11 +522,8 @@ class ProductColorAdmin(admin.ModelAdmin, JalaliDateMixin, StockStatusMixin):
             if sizes.count() > 3:
                 details += ' و ...'
             
-            status = self.get_stock_status(total)
-            badge = get_status_badge(status['text'], status['color'], status['icon'])
-            
             return mark_safe(
-                f'{badge}<br>'
+                f'<span style="font-weight: bold;">{total} عدد</span><br>'
                 f'<small style="color: #6c757d;">{details}</small>'
             )
         return '-'
@@ -690,7 +682,7 @@ class ProductSizeAdmin(admin.ModelAdmin, JalaliDateMixin, StockStatusMixin):
         count = 0
         for item in queryset:
             if not item.sku:
-                item.save()  # save متد generate_sku را صدا می‌زند
+                item.save()
                 count += 1
         self.message_user(request, f'✅ SKU برای {count} سایز ایجاد شد.', messages.SUCCESS)
     generate_sku.short_description = '🏷️ ایجاد SKU'
