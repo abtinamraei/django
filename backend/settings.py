@@ -1,4 +1,3 @@
-# settings.py (اصلاح شده)
 from pathlib import Path
 from datetime import timedelta
 
@@ -19,16 +18,16 @@ INSTALLED_APPS = [
     'corsheaders',
     'rest_framework',
     'rest_framework_simplejwt',
-    'api',  # اپ شما
+    'api',
 ]
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'whitenoise.middleware.WhiteNoiseMiddleware',
-    'django.contrib.sessions.middleware.SessionMiddleware',
-    'corsheaders.middleware.CorsMiddleware',  # قبل از CommonMiddleware
+    'corsheaders.middleware.CorsMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
+    'django.contrib.sessions.middleware.SessionMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
@@ -86,7 +85,7 @@ MEDIA_ROOT = BASE_DIR / 'media'
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-# --- CORS ---
+# ===================== CORS =====================
 CORS_ALLOWED_ORIGINS = [
     "https://abtin12345678.onrender.com",
     "http://127.0.0.1:3000",
@@ -95,7 +94,10 @@ CORS_ALLOW_CREDENTIALS = True
 CORS_ALLOW_ALL_METHODS = True
 CORS_ALLOW_HEADERS = ['*']
 
-# --- REST Framework & JWT ---
+# برای تست موقت (اگه بازم CORS خطا داد)
+# CORS_ALLOW_ALL_ORIGINS = True
+
+# ===================== REST Framework =====================
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
         'rest_framework_simplejwt.authentication.JWTAuthentication',
@@ -111,11 +113,14 @@ SIMPLE_JWT = {
     'AUTH_HEADER_TYPES': ('Bearer',),
 }
 
-# --- ایمیل ---
-EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend' 
+# ===================== Email (Gmail) =====================
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 EMAIL_HOST = 'smtp.gmail.com'
 EMAIL_USE_TLS = True
 EMAIL_PORT = 587
 EMAIL_HOST_USER = 'abtin.amraei@gmail.com'
-EMAIL_HOST_PASSWORD = 'cbof yaui whij lsui'
+EMAIL_HOST_PASSWORD = 'cbofyauiwhijlsui'  # بدون فاصله
 DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
+
+# ===================== Settings =====================
+APPEND_SLASH = True  # این رو به همین صورت بذار
